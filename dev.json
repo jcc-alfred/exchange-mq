@@ -1,0 +1,49 @@
+{
+    "apps": [
+        {
+            "name": "MQ_Send_Code",
+            "script": "./core/Tasks/Send_Code.js",
+            "exec_mode": "fork",
+            "watch": [
+                "core"
+            ],
+            "watch_options": {
+                "usePolling": true
+            },
+            "merge_logs": true,
+            "out_file"   : "./logs/Send_Code.out.log",
+            "error_file" : "./logs/Send_Code.err.log",
+            "log_date_format": "YYYY-MM-DD HH:mm:ss"
+        },
+        {
+            "name": "MQ_Send_Alert",
+            "script": "./core/Tasks/Send_Alert.js",
+            "exec_mode": "fork",
+            "watch": [
+                "core"
+            ],
+            "watch_options": {
+                "usePolling": true
+            },
+            "merge_logs": true,
+            "out_file"   : "./logs/Send_Alert.out.log",
+            "error_file" : "./logs/Send_Alert.err.log",
+            "log_date_format": "YYYY-MM-DD HH:mm:ss"
+        },
+        {
+            "name": "MQ_Entrust_Queue",
+            "script": "./core/Tasks/Entrust_Queue.js",
+            "exec_mode": "fork",
+            "watch": [
+                "core"
+            ],
+            "watch_options": {
+                "usePolling": true
+            },
+            "merge_logs": true,
+            "out_file"   : "./logs/Entrust_Queue.out.log",
+            "error_file" : "./logs/Entrust_Queue.err.log",
+            "log_date_format": "YYYY-MM-DD HH:mm:ss"
+        }
+    ]
+}
