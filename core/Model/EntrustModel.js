@@ -250,8 +250,8 @@ class EntrustModel{
                 if(await cacheKline.hexists(ckeyKline,timestamp)){
                     let obj = await cacheKline.hget(ckeyKline,timestamp);
                     newObj.open_price = parseFloat(obj.open_price);
-                    newObj.high_price = params.trade_price > parseFloat(obj.high_price) ? parseFloat(params.trade_price) : parseFloat(obj.high_price);
-                    newObj.low_price = params.trade_price < parseFloat(obj.low_price) ? parseFloat(params.trade_price) : parseFloat(obj.low_price);
+                    newObj.high_price = parseFloat(params.trade_price) > parseFloat(obj.high_price) ? parseFloat(params.trade_price) : parseFloat(obj.high_price);
+                    newObj.low_price = parseFloat(params.trade_price) < parseFloat(obj.low_price) ? parseFloat(params.trade_price) : parseFloat(obj.low_price);
                     newObj.volume = Utils.add(parseFloat(obj.volume), params.trade_volume);
                 }else{
                     newObj.open_price = parseFloat(params.trade_price);
@@ -272,13 +272,13 @@ class EntrustModel{
         let resEntrustStatusName = '待成交';
         let tradePrice = 0;
         let tradeVolume = 0;
-        if(reqItem.no_completed_volume > resItem.no_completed_volume){
+        if(parseFloat(reqItem.no_completed_volume) > parseFloat(resItem.no_completed_volume)){
             tradeVolume = resItem.no_completed_volume;
             reqEntrustStatus = 1;
             reqEntrustStatusName = '部分成交';
             resEntrustStatus = 2;
             resEntrustStatusName = '已完成';
-        }else if(reqItem.no_completed_volume < resItem.no_completed_volume){
+        }else if(parseFloat(reqItem.no_completed_volume) < parseFloat(resItem.no_completed_volume)){
             tradeVolume = reqItem.no_completed_volume;
             reqEntrustStatus = 2;
             reqEntrustStatusName = '已完成';
@@ -291,7 +291,7 @@ class EntrustModel{
             resEntrustStatus = 2;
             resEntrustStatusName = '已完成';
         }
-        if(reqItem.entrust_price >= resItem.entrust_price){
+        if(parseFloat(reqItem.entrust_price) >= parseFloat(resItem.entrust_price)){
             tradePrice = resItem.entrust_price;
         }else{
             tradePrice = reqItem.entrust_price;

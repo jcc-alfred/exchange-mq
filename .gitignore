@@ -1,2 +1,4 @@
 node_modules
 logs
+
+core/Base/config.js
