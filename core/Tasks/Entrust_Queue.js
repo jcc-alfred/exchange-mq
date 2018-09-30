@@ -17,7 +17,7 @@ let socket = io(config.socketDomain);
         let ch =  await conn.createChannel();
         let coinExList = await CoinModel.getCoinExchangeList();
         coinExList.forEach(async(item)=>{
-            ch.prefetch(10);
+            ch.prefetch(1);
             //消费队列
             ch.assertQueue(config.MQKey.Entrust_Queue + item.coin_exchange_id, {durable: true});
             ch.consume(config.MQKey.Entrust_Queue + item.coin_exchange_id,async (msg)=>{
@@ -48,7 +48,7 @@ let socket = io(config.socketDomain);
                             let sellItem = this.sellList[0];
                             //价格匹配
                             if(parseFloat(params.entrust_price) >= parseFloat(sellItem.entrust_price)){
-                                matchOrder(params.entrust_id,params.entrust_type_id,sellItem);                            
+                                await matchOrder(params.entrust_id,params.entrust_type_id,sellItem);                            
                             }
                         }
                     }else{
@@ -56,7 +56,7 @@ let socket = io(config.socketDomain);
                             let buyItem = this.buyList[0];
                             //价格匹配
                             if(parseFloat(buyItem.entrust_price) >= parseFloat(params.entrust_price)){
-                                matchOrder(params.entrust_id,params.entrust_type_id,buyItem);
+                                await matchOrder(params.entrust_id,params.entrust_type_id,buyItem);
                             }
                         }
                     }
@@ -137,7 +137,7 @@ async function matchOrder(entrustId,entrustTypeId,resItem){
                 if(this.sellList && this.sellList.length > 0){
                     let sellItem = this.sellList[0];
                     if(sellItem && parseFloat(reqItem.entrust_price) >= parseFloat(sellItem.entrust_price)){
-                        matchOrder(reqItem.entrust_id,reqItem.entrust_type_id,sellItem);
+                        await matchOrder(reqItem.entrust_id,reqItem.entrust_type_id,sellItem);
                     }
                 }
                                 
@@ -146,7 +146,7 @@ async function matchOrder(entrustId,entrustTypeId,resItem){
                 if(this.buyList && this.buyList.length > 0){
                     let buyItem = this.buyList[0];
                     if(buyItem && parseFloat(buyItem.entrust_price) >= parseFloat(resItem.entrust_price)){
-                        matchOrder(resItem.entrust_id,resItem.entrust_type_id,buyItem);
+                       await matchOrder(resItem.entrust_id,resItem.entrust_type_id,buyItem);
                     } 
                 }
             }else{
@@ -161,7 +161,7 @@ async function matchOrder(entrustId,entrustTypeId,resItem){
                 if(this.buyList && this.buyList.length > 0){
                     let buyItem = this.buyList[0];
                     if(buyItem && parseFloat(reqItem.entrust_price) <= parseFloat(buyItem.entrust_price)){
-                        matchOrder(reqItem.entrust_id,reqItem.entrust_type_id,buyItem);
+                        await matchOrder(reqItem.entrust_id,reqItem.entrust_type_id,buyItem);
                     }
                 }
             }else if(parseFloat(reqItem.no_completed_volume) < parseFloat(resItem.no_completed_volume)){
@@ -169,7 +169,7 @@ async function matchOrder(entrustId,entrustTypeId,resItem){
                 if(this.sellList && this.sellList.length > 0){
                     let sellItem = this.sellList[0];
                     if(sellItem && parseFloat(sellItem.entrust_price) <= parseFloat(resItem.entrust_price)){
-                        matchOrder(resItem.entrust_id,resItem.entrust_type_id,sellItem);
+                        await matchOrder(resItem.entrust_id,resItem.entrust_type_id,sellItem);
                     }
                 }
             }else{
