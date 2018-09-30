@@ -128,6 +128,10 @@ async function getBuyEntrustList(coinExchangeId,refresh=false){
 
 async function matchOrder(entrustId,entrustTypeId,resItem){
     let reqItem = await EntrustModel.getEntrustByEntrustId(entrustId,resItem.coin_exchange_id,entrustTypeId);
+    if(!reqItem){
+        console.log("Cannot find the EntrustID (status 0,1 )from redis and db for "+JSON.stringify(resItem));
+        return true
+    }
     if(reqItem.entrust_type_id == 1){
         //处理订单
         let res = await EntrustModel.processOrder(reqItem,resItem);

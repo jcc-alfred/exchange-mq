@@ -57,9 +57,9 @@ class EntrustModel{
         }
     }
     async getEntrustByEntrustId(entrustId,coinExchangeId,entrustTypeId,refresh=false){
+        let cache = await Cache.init(config.cacheDB.order);
         try {
 
-            let cache = await Cache.init(config.cacheDB.order);
             let ckey = (entrustTypeId == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + coinExchangeId;
             if(await cache.exists(ckey) && !refresh){
                 let cRes =  await cache.hgetall(ckey);
@@ -71,7 +71,10 @@ class EntrustModel{
                     let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `
                     let res = await cnt.execReader(sql,entrustId);
                     cnt.close();
-                    await cache.hset(ckey,res.entrust_id,res);
+                    if (res) {
+                        await cache.hset(ckey, res.entrust_id, res);
+                        cache.close();
+                    }
                     cache.close();
                     return res;
                 }
@@ -89,12 +92,14 @@ class EntrustModel{
         } catch (error) {
             throw error;
         }
+        finally {
+            cache.close();
+        }
         
     }
     async getBuyEntrustListByCEId(coinExchangeId,refresh=false){
+        let cache = await Cache.init(config.cacheDB.order);
         try{
-
-            let cache = await Cache.init(config.cacheDB.order);
             let ckey = config.cacheKey.Buy_Entrust + coinExchangeId;
             if(await cache.exists(ckey) && !refresh){
                 let buyRes = await cache.hgetall(ckey);
@@ -127,12 +132,13 @@ class EntrustModel{
 
         }catch(error){
             throw error;
+        }finally {
+            cache.close();
         }
     }
     async getSellEntrustListByCEId(coinExchangeId,refresh=false){
+        let cache = await Cache.init(config.cacheDB.order);
         try{
-
-            let cache = await Cache.init(config.cacheDB.order);
             let ckey = config.cacheKey.Sell_Entrust + coinExchangeId;
             if(await cache.exists(ckey) && !refresh){
                 let sellRes = await cache.hgetall(ckey);
@@ -166,6 +172,8 @@ class EntrustModel{
 
         }catch(error){
             throw error;
+        }finally {
+            cache.close();
         }
     }
     async deleteEntrust(ckey,field){
@@ -185,85 +193,93 @@ class EntrustModel{
     }
     async addOrder(params){
         let cache = await Cache.init(config.cacheDB.order);
-        let ckey = config.cacheKey.Order_Coin_Exchange_Id + params.coin_exchange_id;
-        if(await cache.exists(ckey) && await cache.hexists(ckey,params.order_id)){
-            await cache.hdel(ckey,params.order_id);
-        }
-        await cache.hset(ckey,params.order_id,params);
-        cache.close();
-        socket.emit('orderList',{coin_exchange_id:params.coin_exchange_id});
-
-        let timeObj = {'1d':86400000,'12h':43200000,'6h':21600000,'4h':14400000,'1h':3600000,'30m':1800000,'15m':900000,'5m':300000,'1m':60000};
-        let sArr = [60000,3600000,86400000];//1m 1h 1d
-        let minArr = [300000,900000,1800000];//5 15 30
-        let hourArr = [14400000,21600000,43200000];//4 6 12
         let cacheKline = await Cache.init(config.cacheDB.kline);
-        await Promise.all(Object.values(timeObj).map(async(range)=>{
-            let ckeyKline = config.cacheKey.KlineData_CEID_Range + params.coin_exchange_id + '_' + range;
-            if(await cacheKline.exists(ckeyKline)){
-                let createTime = new Date(params.create_time);
-                let newTime = createTime;
-                let timestamp = 0;
-                if(sArr.includes(range)){
-                    let dateFormatStr = "yyyy-MM-dd HH:mm:00";//1m
-                    if(range == 60000){
-                        dateFormatStr = "yyyy-MM-dd HH:mm:00";//1m
-                    }else if(range == 3600000){
-                        dateFormatStr = "yyyy-MM-dd HH:00:00";//1h
-                    }else{
-                        dateFormatStr = "yyyy-MM-dd 00:00:00";//1d
-                    }
-                    newTime = new Date(new Date(createTime.Format(dateFormatStr)).getTime());
-                    timestamp = Math.round(newTime.getTime()/1000);
-                }
-                else if(minArr.includes(range)){
-                    let i = 5;
-                    if(range == 300000){//5m
-                        i= 5;
-                    }else if(range == 900000){//15
-                        i = 15;
-                    }else if(range == 1800000){//30
-                        i = 30;
-                    }
-                    var m = parseInt(createTime.getMinutes()/i)*i
-                    newTime = new Date(new Date(createTime.Format('yyyy-MM-dd HH:00:00')).getTime() + 60000 * m);
-                    timestamp = Math.round(newTime.getTime()/1000);
-
-                }else if(hourArr.includes(range)){
-                    let i = 4;
-                    if(range == 14400000){//4h
-                        i= 4;
-                    }else if(range == 21600000){//6h
-                        i = 6;
-                    }else if(range == 43200000){//12h
-                        i = 12;
-                    }
-                    var h = parseInt(createTime.getHours()/i)*i
-                    newTime = new Date(new Date(createTime.Format('yyyy-MM-dd HH:00:00')).getTime() + 3600000 * h);
-                    timestamp = Math.round(newTime.getTime()/1000);
-                }
-                let datestamp = newTime.Format("yyyy-MM-dd HH:mm:ss");
-                let newObj = {};
-                newObj.timestamp = timestamp;
-                newObj.datestamp = datestamp;
-                newObj.close_price = parseFloat(params.trade_price);
-                if(await cacheKline.hexists(ckeyKline,timestamp)){
-                    let obj = await cacheKline.hget(ckeyKline,timestamp);
-                    newObj.open_price = parseFloat(obj.open_price);
-                    newObj.high_price = parseFloat(params.trade_price) > parseFloat(obj.high_price) ? parseFloat(params.trade_price) : parseFloat(obj.high_price);
-                    newObj.low_price = parseFloat(params.trade_price) < parseFloat(obj.low_price) ? parseFloat(params.trade_price) : parseFloat(obj.low_price);
-                    newObj.volume = Utils.add(parseFloat(obj.volume), params.trade_volume);
-                }else{
-                    newObj.open_price = parseFloat(params.trade_price);
-                    newObj.high_price = parseFloat(params.trade_price);
-                    newObj.low_price = parseFloat(params.trade_price);
-                    newObj.volume = parseFloat(params.trade_volume);
-                }
-                await cacheKline.hset(ckeyKline,timestamp,newObj);
+        try{
+            let ckey = config.cacheKey.Order_Coin_Exchange_Id + params.coin_exchange_id;
+            if(await cache.exists(ckey) && await cache.hexists(ckey,params.order_id)){
+                await cache.hdel(ckey,params.order_id);
             }
-        }));
-        cacheKline.close();
-        socket.emit('kline',{coin_exchange_id:params.coin_exchange_id});
+            await cache.hset(ckey,params.order_id,params);
+            cache.close();
+            socket.emit('orderList',{coin_exchange_id:params.coin_exchange_id});
+
+            let timeObj = {'1d':86400000,'12h':43200000,'6h':21600000,'4h':14400000,'1h':3600000,'30m':1800000,'15m':900000,'5m':300000,'1m':60000};
+            let sArr = [60000,3600000,86400000];//1m 1h 1d
+            let minArr = [300000,900000,1800000];//5 15 30
+            let hourArr = [14400000,21600000,43200000];//4 6 12
+            await Promise.all(Object.values(timeObj).map(async(range)=>{
+                let ckeyKline = config.cacheKey.KlineData_CEID_Range + params.coin_exchange_id + '_' + range;
+                if(await cacheKline.exists(ckeyKline)){
+                    let createTime = new Date(params.create_time);
+                    let newTime = createTime;
+                    let timestamp = 0;
+                    if(sArr.includes(range)){
+                        let dateFormatStr = "yyyy-MM-dd HH:mm:00";//1m
+                        if(range == 60000){
+                            dateFormatStr = "yyyy-MM-dd HH:mm:00";//1m
+                        }else if(range == 3600000){
+                            dateFormatStr = "yyyy-MM-dd HH:00:00";//1h
+                        }else{
+                            dateFormatStr = "yyyy-MM-dd 00:00:00";//1d
+                        }
+                        newTime = new Date(new Date(createTime.Format(dateFormatStr)).getTime());
+                        timestamp = Math.round(newTime.getTime()/1000);
+                    }
+                    else if(minArr.includes(range)){
+                        let i = 5;
+                        if(range == 300000){//5m
+                            i= 5;
+                        }else if(range == 900000){//15
+                            i = 15;
+                        }else if(range == 1800000){//30
+                            i = 30;
+                        }
+                        var m = parseInt(createTime.getMinutes()/i)*i
+                        newTime = new Date(new Date(createTime.Format('yyyy-MM-dd HH:00:00')).getTime() + 60000 * m);
+                        timestamp = Math.round(newTime.getTime()/1000);
+
+                    }else if(hourArr.includes(range)){
+                        let i = 4;
+                        if(range == 14400000){//4h
+                            i= 4;
+                        }else if(range == 21600000){//6h
+                            i = 6;
+                        }else if(range == 43200000){//12h
+                            i = 12;
+                        }
+                        var h = parseInt(createTime.getHours()/i)*i
+                        newTime = new Date(new Date(createTime.Format('yyyy-MM-dd HH:00:00')).getTime() + 3600000 * h);
+                        timestamp = Math.round(newTime.getTime()/1000);
+                    }
+                    let datestamp = newTime.Format("yyyy-MM-dd HH:mm:ss");
+                    let newObj = {};
+                    newObj.timestamp = timestamp;
+                    newObj.datestamp = datestamp;
+                    newObj.close_price = parseFloat(params.trade_price);
+                    if(await cacheKline.hexists(ckeyKline,timestamp)){
+                        let obj = await cacheKline.hget(ckeyKline,timestamp);
+                        newObj.open_price = parseFloat(obj.open_price);
+                        newObj.high_price = parseFloat(params.trade_price) > parseFloat(obj.high_price) ? parseFloat(params.trade_price) : parseFloat(obj.high_price);
+                        newObj.low_price = parseFloat(params.trade_price) < parseFloat(obj.low_price) ? parseFloat(params.trade_price) : parseFloat(obj.low_price);
+                        newObj.volume = Utils.add(parseFloat(obj.volume), params.trade_volume);
+                    }else{
+                        newObj.open_price = parseFloat(params.trade_price);
+                        newObj.high_price = parseFloat(params.trade_price);
+                        newObj.low_price = parseFloat(params.trade_price);
+                        newObj.volume = parseFloat(params.trade_volume);
+                    }
+                    await cacheKline.hset(ckeyKline,timestamp,newObj);
+                }
+            }));
+            cacheKline.close();
+            socket.emit('kline',{coin_exchange_id:params.coin_exchange_id});
+        }catch (e) {
+            throw e;
+        }finally {
+            cache.close();
+            cacheKline.close();
+        }
+
     }
     async processOrder(reqItem,resItem){
         let reqEntrustStatus = 0;
@@ -490,7 +506,6 @@ class EntrustModel{
                     entrust_status:resEntrustStatus,
                     entrust_status_name:resEntrustStatusName
                 },{entrust_id:resItem.entrust_id});
-                
                 //卖单用户
                 //- 冻结数量
                 let reqSellCoin = Utils.checkDecimal(Utils.mul(tradeAmount , Utils.sub(1,reqItem.trade_fees_rate)),coinEx.exchange_decimal_digits);
