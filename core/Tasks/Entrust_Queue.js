@@ -48,6 +48,7 @@ let socket = io(config.socketDomain);
                             let sellItem = this.sellList[0];
                             //价格匹配
                             if (parseFloat(params.entrust_price) >= parseFloat(sellItem.entrust_price)) {
+                                console.log(entrust_price.entrust_id);
                                 await matchOrder(params.entrust_id, params.entrust_type_id, sellItem);
                             }
                         }
