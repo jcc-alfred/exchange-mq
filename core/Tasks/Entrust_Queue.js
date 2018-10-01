@@ -110,7 +110,7 @@ async function getBuyEntrustList(coinExchangeId, refresh = true) {
 }
 
 async function matchOrder(entrustId, entrustTypeId, resItem) {
-    let reqItem = await EntrustModel.getEntrustByEntrustId(entrustId, resItem.coin_exchange_id, entrustTypeId);
+    let reqItem = await EntrustModel.getEntrustByEntrustId(entrustId, resItem.coin_exchange_id, entrustTypeId, true);
     if (reqItem && reqItem.entrust_type_id == 1) {
         //处理订单
         let res = await EntrustModel.processOrder(reqItem, resItem);
