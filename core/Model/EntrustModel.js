@@ -36,7 +36,7 @@ class EntrustModel{
                 }
             }
             let cnt =  await DB.cluster('slave');
-            let sql = `SELECT * FROM m_entrust WHERE user_id = ? and (entrust_status = 0 or entrust_status = 1) `
+            let sql = `SELECT * FROM m_entrust WHERE user_id = ? and (entrust_status = 0 or entrust_status = 1) `;
             let res =  await cnt.execQuery(sql,userId);
             cnt.close();
 
@@ -68,7 +68,7 @@ class EntrustModel{
                     return  JSON.parse(cRes[entrustId])
                 }else{
                     let cnt = await DB.cluster('salve');
-                    let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `
+                    let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
                     let res = await cnt.execReader(sql,entrustId);
                     cnt.close();
                     if (res) {
@@ -85,7 +85,7 @@ class EntrustModel{
                 
             }
             let cnt = await DB.cluster('salve');
-            let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `
+            let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
             let res = await cnt.execReader(sql,entrustId);
             cnt.close();
             if(res == null || res.entrust_id == null){
@@ -124,7 +124,7 @@ class EntrustModel{
                 }
             }
             let cnt =  await DB.cluster('slave');
-            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 1 and (entrust_status = 0 or entrust_status = 1) ORDER BY entrust_price DESC, entrust_id ASC LIMIT 20`
+            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 1 and (entrust_status = 0 or entrust_status = 1) ORDER BY entrust_price DESC, entrust_id ASC LIMIT 20`;
             let res =  await cnt.execQuery(sql,coinExchangeId);
             cnt.close();
 
@@ -164,7 +164,7 @@ class EntrustModel{
             }
 
             let cnt =  await DB.cluster('slave');
-            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 0 and (entrust_status = 0 or entrust_status = 1) ORDER BY entrust_price ASC, entrust_id ASC LIMIT 20`
+            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 0 and (entrust_status = 0 or entrust_status = 1) ORDER BY entrust_price ASC, entrust_id ASC LIMIT 20`;
             let res =  await cnt.execQuery(sql,coinExchangeId);
             cnt.close();
 
@@ -244,7 +244,7 @@ class EntrustModel{
                         }else if(range == 1800000){//30
                             i = 30;
                         }
-                        var m = parseInt(createTime.getMinutes()/i)*i
+                        var m = parseInt(createTime.getMinutes() / i) * i;
                         newTime = new Date(new Date(createTime.Format('yyyy-MM-dd HH:00:00')).getTime() + 60000 * m);
                         timestamp = Math.round(newTime.getTime()/1000);
 
@@ -257,7 +257,7 @@ class EntrustModel{
                         }else if(range == 43200000){//12h
                             i = 12;
                         }
-                        var h = parseInt(createTime.getHours()/i)*i
+                        var h = parseInt(createTime.getHours() / i) * i;
                         newTime = new Date(new Date(createTime.Format('yyyy-MM-dd HH:00:00')).getTime() + 3600000 * h);
                         timestamp = Math.round(newTime.getTime()/1000);
                     }
@@ -367,11 +367,13 @@ class EntrustModel{
                 let reqFrozenCoin = Utils.checkDecimal(Utils.mul(tradeVolume ,reqItem.entrust_price),coinEx.exchange_decimal_digits);
                 let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
                                                                 where user_id = ? and coin_id = ?`,[reqAvailableCoin,reqFrozenCoin,tradeAmount,reqItem.user_id,coinEx.exchange_coin_id]);
+                console.log(reqFrozenCoin);
                 //卖单用户
                 //- 冻结数量
                 let resBuyCoin = Utils.checkDecimal(Utils.mul(tradeAmount , Utils.sub(1,resItem.trade_fees_rate)),coinEx.exchange_decimal_digits);
                 let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
                                                         where user_id = ? and coin_id = ?`,[tradeVolume,tradeVolume,resItem.user_id,coinEx.coin_id]);
+                console.log(tradeVolume);
                 // + 卖出金额
                 let resUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
                                                                 where user_id = ? and coin_id = ?`,[resBuyCoin,resBuyCoin,resItem.user_id,coinEx.exchange_coin_id]);
