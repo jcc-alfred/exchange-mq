@@ -523,6 +523,7 @@ class EntrustModel{
                 let reqSellCoin = Utils.checkDecimal(Utils.mul(tradeAmount , Utils.sub(1,reqItem.trade_fees_rate)),coinEx.exchange_decimal_digits);
                 let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
                                                         where user_id = ? and coin_id = ?`,[tradeVolume,tradeVolume,reqItem.user_id,coinEx.coin_id]);
+                console.log(tradeVolume);
                 // + 卖出金额
                 let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
                                                                 where user_id = ? and coin_id = ?`,[reqSellCoin,reqSellCoin,reqItem.user_id,coinEx.exchange_coin_id]);
@@ -536,7 +537,7 @@ class EntrustModel{
                 let resFrozenCoin = Utils.checkDecimal(Utils.mul(tradeVolume ,resItem.entrust_price),coinEx.exchange_decimal_digits);
                 let resUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
                                                                 where user_id = ? and coin_id = ?`,[resAvailableCoin,resFrozenCoin,tradeAmount,resItem.user_id,coinEx.exchange_coin_id]);
-                
+                console.log(resFrozenCoin);
                 //更新用户资产缓存
                 let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id,true);
                 let resCoinAssetsList = await AssetsModel.getUserAssetsByUserId(resItem.user_id,true);
