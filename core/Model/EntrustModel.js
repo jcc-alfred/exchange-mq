@@ -308,7 +308,6 @@ class EntrustModel {
     }
 
     async processOrder(reqItem, resItem) {
-        console.log(reqItem.entrust_id + "---" + resItem.entrust_id);
         let reqEntrustStatus = 0;
         let reqEntrustStatusName = '待成交';
         let resEntrustStatus = 0;
@@ -524,6 +523,7 @@ class EntrustModel {
             } finally {
                 cnt.close();
             }
+            console.log(res);
             return res;
         }
         if (reqItem.entrust_type_id == 0) {
@@ -694,6 +694,7 @@ class EntrustModel {
                     }
                 } else {
                     cnt.rollback();
+                    console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---" + res);
                     return res;
                 }
                 res = 1
@@ -704,6 +705,7 @@ class EntrustModel {
             } finally {
                 cnt.close();
             }
+            console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---" + res);
             return res;
         }
     }
