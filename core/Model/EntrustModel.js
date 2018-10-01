@@ -121,6 +121,7 @@ class EntrustModel {
                         data.push(JSON.parse(item));
                     }
                     cache.close();
+                    console.log("from buy cache");
                     return data;
                 }
             }
@@ -138,7 +139,7 @@ class EntrustModel {
             }));
 
             cache.close();
-
+            console.log("from buy db");
             return res;
 
         } catch (error) {
@@ -161,6 +162,7 @@ class EntrustModel {
                         data.push(JSON.parse(item));
                     }
                     cache.close();
+                    console.log("from sell cache");
                     return data;
                 }
             }
@@ -179,7 +181,7 @@ class EntrustModel {
             }));
 
             cache.close();
-
+            console.log("from sell db");
             return res;
 
         } catch (error) {
