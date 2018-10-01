@@ -308,6 +308,7 @@ class EntrustModel {
     }
 
     async processOrder(reqItem, resItem) {
+        console.log("start process" + reqItem.entrust_id + "--" + resItem.entrust_id);
         let reqEntrustStatus = 0;
         let reqEntrustStatusName = '待成交';
         let resEntrustStatus = 0;
@@ -347,11 +348,13 @@ class EntrustModel {
         let resAvgPrice = Utils.checkDecimal(Utils.div(resTotalAmount, Utils.add(resItem.completed_volume, tradeVolume)), coinEx.exchange_decimal_digits);
         //buy order
         if (reqItem.entrust_type_id == 1) {
+            console.log("start process buyitme" + reqItem.entrust_id + "--sell" + resItem.entrust_id);
             let cnt = await DB.cluster('master');
             let res = 0;
             try {
                 cnt.transaction();
                 //buy entrust
+                console.log("start transaction");
                 let reqTradeFees = Utils.checkDecimal(Utils.mul(tradeVolume, reqItem.trade_fees_rate), coinEx.decimal_digits);
                 let reqEntrustRes = await cnt.edit('m_entrust', {
                     completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
@@ -431,6 +434,7 @@ class EntrustModel {
                     reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
                     resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
                     cnt.commit();
+                    console.log("commit");
                     let req = {
                         entrust_id: reqItem.entrust_id,
                         coin_exchange_id: reqItem.coin_exchange_id,
@@ -513,6 +517,7 @@ class EntrustModel {
                     }
                 } else {
                     cnt.rollback();
+                    console.log("rollback" + res);
                     return res;
                 }
                 res = 1;
@@ -523,7 +528,7 @@ class EntrustModel {
             } finally {
                 cnt.close();
             }
-            console.log(res);
+            console.log("finally" + res);
             return res;
         }
         if (reqItem.entrust_type_id == 0) {
@@ -531,6 +536,7 @@ class EntrustModel {
             let res = 0;
             try {
                 cnt.transaction();
+                console.log("transaction");
                 //sell entrust
                 let reqTradeFees = Utils.checkDecimal(Utils.mul(tradeAmount, reqItem.trade_fees_rate), coinEx.exchange_decimal_digits);
                 let reqEntrustRes = await cnt.edit('m_entrust', {
@@ -614,6 +620,7 @@ class EntrustModel {
                     reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
                     resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
                     cnt.commit();
+                    console.log("commit");
                     let req = {
                         entrust_id: reqItem.entrust_id,
                         coin_exchange_id: reqItem.coin_exchange_id,
@@ -694,7 +701,7 @@ class EntrustModel {
                     }
                 } else {
                     cnt.rollback();
-                    console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---" + res);
+                    console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---rollback" + res);
                     return res;
                 }
                 res = 1
@@ -705,7 +712,7 @@ class EntrustModel {
             } finally {
                 cnt.close();
             }
-            console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---" + res);
+            console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---finally" + res);
             return res;
         }
     }
