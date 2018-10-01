@@ -77,7 +77,6 @@ let socket = io(config.socketDomain);
                         ch.ack(msg);
                         return;
                     }                  
-        
                     ch.ack(msg);
                 } catch (error) {
                     ch.nack(msg);
@@ -128,11 +127,7 @@ async function getBuyEntrustList(coinExchangeId,refresh=false){
 
 async function matchOrder(entrustId,entrustTypeId,resItem){
     let reqItem = await EntrustModel.getEntrustByEntrustId(entrustId,resItem.coin_exchange_id,entrustTypeId);
-    if(!reqItem){
-        console.log("Cannot find the EntrustID (status 0,1 )from redis and db for "+JSON.stringify(resItem));
-        return true
-    }
-    if(reqItem.entrust_type_id == 1){
+    if(reqItem && reqItem.entrust_type_id == 1){
         //处理订单
         let res = await EntrustModel.processOrder(reqItem,resItem);
         if(res){
@@ -150,13 +145,13 @@ async function matchOrder(entrustId,entrustTypeId,resItem){
                 if(this.buyList && this.buyList.length > 0){
                     let buyItem = this.buyList[0];
                     if(buyItem && parseFloat(buyItem.entrust_price) >= parseFloat(resItem.entrust_price)){
-                       await matchOrder(resItem.entrust_id,resItem.entrust_type_id,buyItem);
+                        await  matchOrder(resItem.entrust_id,resItem.entrust_type_id,buyItem);
                     } 
                 }
             }else{
             }
         }
-    }else{
+    }else if(reqItem && reqItem.entrust_type_id == 0){
         //处理订单
         let res = await EntrustModel.processOrder(reqItem,resItem);
         if(res){
@@ -179,5 +174,8 @@ async function matchOrder(entrustId,entrustTypeId,resItem){
             }else{
             }
         }
+    }
+    else{
+        
     }
 }

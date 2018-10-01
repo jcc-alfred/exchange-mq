@@ -72,6 +72,10 @@ class EntrustModel{
                     let res = await cnt.execReader(sql,entrustId);
                     cnt.close();
                     if (res) {
+                        if(res == null || res.entrust_id == null){
+                            console.error('1getdax:'+res + ' --entrustId:' + entrustId + ' --coinExchangeId:'+coinExchangeId +' --entrustTypeId:' + entrustTypeId + ' --refresh:'+refresh);
+                            console.log('1getdax:'+res + ' --entrustId:' + entrustId + ' --coinExchangeId:'+coinExchangeId +' --entrustTypeId:' + entrustTypeId + ' --refresh:'+refresh);
+                        }
                         await cache.hset(ckey, res.entrust_id, res);
                         cache.close();
                     }
@@ -84,8 +88,14 @@ class EntrustModel{
             let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `
             let res = await cnt.execReader(sql,entrustId);
             cnt.close();
-            await cache.hset(ckey,res.entrust_id,res);
-            let cRes = await cache.hgetall(ckey);
+            if(res == null || res.entrust_id == null){
+                console.error('2getdax:'+res + ' --entrustId:' + entrustId + ' --coinExchangeId:'+coinExchangeId +' --entrustTypeId:' + entrustTypeId + ' --refresh:'+refresh);
+                console.log('2getdax:'+res + ' --entrustId:' + entrustId + ' --coinExchangeId:'+coinExchangeId +' --entrustTypeId:' + entrustTypeId + ' --refresh:'+refresh);
+            }
+            if(res){
+                await cache.hset(ckey,res.entrust_id,res);
+                //let cRes = await cache.hgetall(ckey);
+            }
             cache.close();
             return res;
 
