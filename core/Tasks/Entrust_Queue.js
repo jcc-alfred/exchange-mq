@@ -87,7 +87,7 @@ function sortASC(item1, item2) {
     return parseFloat(item1.entrust_price) - parseFloat(item2.entrust_price);
 }
 
-async function getSellEntrustList(coinExchangeId, refresh = false) {
+async function getSellEntrustList(coinExchangeId, refresh = true) {
     if (!this.sellList || this.sellList.length == 0 || refresh) {
         let arr = await EntrustModel.getSellEntrustListByCEId(coinExchangeId, refresh);
         this.sellList = arr.sort(sortASC);
@@ -98,7 +98,7 @@ async function getSellEntrustList(coinExchangeId, refresh = false) {
     return this.sellList;
 }
 
-async function getBuyEntrustList(coinExchangeId, refresh = false) {
+async function getBuyEntrustList(coinExchangeId, refresh = true) {
     if (!this.buyList || this.buyList.length == 0 || refresh) {
         let arr = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId, refresh);
         this.buyList = arr.sort(sortDESC);
