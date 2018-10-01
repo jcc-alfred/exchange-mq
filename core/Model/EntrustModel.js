@@ -308,6 +308,7 @@ class EntrustModel {
     }
 
     async processOrder(reqItem, resItem) {
+        console.log(reqItem.entrust_id + "---" + resItem.entrust_id);
         let reqEntrustStatus = 0;
         let reqEntrustStatusName = '待成交';
         let resEntrustStatus = 0;
