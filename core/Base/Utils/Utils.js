@@ -189,6 +189,12 @@ Utils =  {
         } catch (f) {}
         return Number(d.replace(".", "")) * Number(e.replace(".", "")) / Math.pow(10, c);
     },
+    mymul(a,b){
+        let res = this.mul(a,b);
+        if(res<0.00000001){
+            return 0;
+        } else {return res}
+    },
     div(a, b) {
         var c, d, e = 0,
             f = 0;

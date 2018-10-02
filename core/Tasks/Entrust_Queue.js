@@ -40,27 +40,27 @@ let socket = io(config.socketDomain);
                     cache.close();
                     socket.emit('entrustList', {coin_exchange_id: item.coin_exchange_id});
                     socket.emit('userEntrustList', {user_id: params.user_id, coin_exchange_id: item.coin_exchange_id});
-
-                    this.sellList = await getSellEntrustList(item.coin_exchange_id);
-                    this.buyList = await getBuyEntrustList(item.coin_exchange_id);
-                    if (params.entrust_type_id == 1) {
-                        if (this.sellList.length > 0) {
-                            let sellItem = this.sellList[0];
-                            //价格匹配
-                            if (parseFloat(params.entrust_price) >= parseFloat(sellItem.entrust_price)) {
-                                console.log(sellItem.entrust_id);
-                                await matchOrder(params.entrust_id, params.entrust_type_id, sellItem);
-                            }
-                        }
-                    } else {
-                        if (this.buyList.length > 0) {
-                            let buyItem = this.buyList[0];
-                            //价格匹配
-                            if (parseFloat(buyItem.entrust_price) >= parseFloat(params.entrust_price)) {
-                                await matchOrder(params.entrust_id, params.entrust_type_id, buyItem);
-                            }
-                        }
-                    }
+                    let result = await matchOrder(params);
+                    // sellList = await getSellEntrustList(item.coin_exchange_id);
+                    // buyList = await getBuyEntrustList(item.coin_exchange_id);
+                    // if (params.entrust_type_id == 1) {
+                    //     if (sellList.length > 0) {
+                    //         let sellItem = sellList[0];
+                    //         //价格匹配
+                    //         if (parseFloat(params.entrust_price) >= parseFloat(sellItem.entrust_price)) {
+                    //             console.log(sellItem.entrust_id);
+                    //             await matchOrder(params.entrust_id, params.entrust_type_id, sellItem);
+                    //         }
+                    //     }
+                    // } else {
+                    //     if (buyList.length > 0) {
+                    //         let buyItem = buyList[0];
+                    //         //价格匹配
+                    //         if (parseFloat(buyItem.entrust_price) >= parseFloat(params.entrust_price)) {
+                    //             await matchOrder(params.entrust_id, params.entrust_type_id, buyItem);
+                    //         }
+                    //     }
+                    // }
                     ch.ack(msg);
                     console.log("-->" + params.entrust_id + ' ' + new Date());
                 } catch (error) {
@@ -88,77 +88,135 @@ function sortASC(item1, item2) {
 }
 
 async function getSellEntrustList(coinExchangeId, refresh = true) {
-    if (!this.sellList || this.sellList.length == 0 || refresh) {
+    let sellList = [];
+    if (refresh) {
         console.log("refresh");
         let arr = await EntrustModel.getSellEntrustListByCEId(coinExchangeId, refresh);
-        this.sellList = arr.sort(sortASC);
+        sellList = arr.sort(sortASC);
     } else {
         console.log("else refresh");
         let arr = await EntrustModel.getSellEntrustListByCEId(coinExchangeId);
-        this.sellList = arr.sort(sortASC);
+        sellList = arr.sort(sortASC);
     }
-    return this.sellList;
+    return sellList;
 }
 
 async function getBuyEntrustList(coinExchangeId, refresh = true) {
-    if (!this.buyList || this.buyList.length == 0 || refresh) {
+    let buyList = [];
+    if (refresh) {
         console.log("refresh");
         let arr = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId, refresh);
-        this.buyList = arr.sort(sortDESC);
+        buyList = arr.sort(sortDESC);
     } else {
         console.log("else refresh");
         let arr = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId);
-        this.buyList = arr.sort(sortDESC);
+        buyList = arr.sort(sortDESC);
     }
-    return this.buyList;
+    return buyList;
 }
 
-async function matchOrder(entrustId, entrustTypeId, resItem) {
-    let reqItem = await EntrustModel.getEntrustByEntrustId(entrustId, resItem.coin_exchange_id, entrustTypeId, true);
-    if (reqItem && reqItem.entrust_type_id == 1) {
-        //处理订单
-        let res = await EntrustModel.processOrder(reqItem, resItem);
-        if (res) {
-            if (reqItem.entrust_type_id == 1) {
-                this.sellList = await getSellEntrustList(resItem.coin_exchange_id);
-                if (this.sellList && this.sellList.length > 0) {
-                    let sellItem = this.sellList[0];
-                    if (sellItem && parseFloat(reqItem.entrust_price) >= parseFloat(sellItem.entrust_price)) {
-                        await matchOrder(reqItem.entrust_id, reqItem.entrust_type_id, sellItem);
-                    }
-                }
-            } else {
-                this.buyList = await getBuyEntrustList(reqItem.coin_exchange_id);
-                if (this.buyList && this.buyList.length > 0) {
-                    let buyItem = this.buyList[0];
-                    if (buyItem && parseFloat(buyItem.entrust_price) >= parseFloat(resItem.entrust_price)) {
-                        await matchOrder(resItem.entrust_id, resItem.entrust_type_id, buyItem);
-                    }
-                }
+
+async function matchOrder(entrust) {
+    let entrustItem = await EntrustModel.getEntrustByEntrustId(entrust.entrust_id,
+                                                                entrust.coin_exchange_id,
+                                                                entrust.entrust_type_id, true);
+    if (!entrustItem) {
+        let cache = await Cache.init(config.cacheDB.order);
+        try {
+            //buy or sell entrust list
+            let ckey = (entrustItem.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrustItem.coin_exchange_id;
+            if (await cache.exists(ckey) && await cache.hexists(ckey, entrustItem.entrust_id)) {
+                await cache.hdel(ckey, entrustItem.entrust_id);
             }
+            //entrust_ceid_userid
+            let uckey = config.cacheKey.Entrust_UserId + entrustItem.user_id;
+            if (await cache.exists(uckey) && await cache.hexists(uckey, entrustItem.entrust_id)) {
+                await cache.hdel(uckey, entrustItem.entrust_id);
+            }
+            console.log(entrust.entrust_id+" already complete, skip it, delete entrust from redis");
+        }catch (e) {
+            console.error(entrust.entrust_id+" already complete, skip it, unable to delete entrust from redis")
+            throw e;
+
+        }finally {
+            cache.close();
         }
-    } else if (reqItem && reqItem.entrust_type_id == 0) {
-        //处理订单
-        let res = await EntrustModel.processOrder(reqItem, resItem);
-        if (res) {
-            if (reqItem.entrust_type_id == 1) {
-                this.buyList = await getBuyEntrustList(resItem.coin_exchange_id);
-                if (this.buyList && this.buyList.length > 0) {
-                    let buyItem = this.buyList[0];
-                    if (buyItem && parseFloat(reqItem.entrust_price) <= parseFloat(buyItem.entrust_price)) {
-                        await matchOrder(reqItem.entrust_id, reqItem.entrust_type_id, buyItem);
-                    }
-                }
-            } else {
-                this.sellList = await getSellEntrustList(reqItem.coin_exchange_id);
-                if (this.sellList && this.sellList.length > 0) {
-                    let sellItem = this.sellList[0];
-                    if (sellItem && parseFloat(sellItem.entrust_price) <= parseFloat(resItem.entrust_price)) {
-                        await matchOrder(resItem.entrust_id, resItem.entrust_type_id, sellItem);
-                    }
+        return true;
+    }
+    if (entrustItem.entrust_type_id == 1) {
+        let sellList = await getSellEntrustList(entrustItem.coin_exchange_id);
+        if (sellList.length > 0) {
+            let sellItem = sellList[0];
+            //价格匹配
+            if (entrustItem.entrust_price >= sellItem.entrust_price) {
+                let nextOrder = await EntrustModel.processOrder(entrustItem, sellItem);
+                if (nextOrder) {
+                    await matchOrder(nextOrder);
                 }
             }
         }
     } else {
+        let buyList = await getBuyEntrustList(entrustItem.coin_exchange_id);
+        if (buyList.length > 0) {
+            let buyItem = buyList[0];
+            //价格匹配
+            if (buyItem.entrust_price >= entrustItem.entrust_price) {
+                let nextOrder = await EntrustModel.processOrder(buyItem, entrustItem);
+                if (nextOrder) {
+                    await matchOrder(nextOrder);
+                }
+            }
+        }
     }
+    return true;
 }
+
+// async function matchOrder(entrustId, entrustTypeId, resItem) {
+//     let reqItem = await EntrustModel.getEntrustByEntrustId(entrustId, resItem.coin_exchange_id, entrustTypeId, true);
+//     if (reqItem && reqItem.entrust_type_id == 1) {
+//         //处理订单
+//         let res = await EntrustModel.processOrder(reqItem, resItem);
+//         if (res) {
+//             if (reqItem.entrust_type_id == 1) {
+//                 let sellList = await getSellEntrustList(resItem.coin_exchange_id);
+//                 if (sellList && sellList.length > 0) {
+//                     let sellItem = this.sellList[0];
+//                     if (sellItem && parseFloat(reqItem.entrust_price) >= parseFloat(sellItem.entrust_price)) {
+//                         await matchOrder(reqItem.entrust_id, reqItem.entrust_type_id, sellItem);
+//                     }
+//                 }
+//             } else {
+//                 this.buyList = await getBuyEntrustList(reqItem.coin_exchange_id);
+//                 if (this.buyList && this.buyList.length > 0) {
+//                     let buyItem = this.buyList[0];
+//                     if (buyItem && parseFloat(buyItem.entrust_price) >= parseFloat(resItem.entrust_price)) {
+//                         await matchOrder(resItem.entrust_id, resItem.entrust_type_id, buyItem);
+//                     }
+//                 }
+//             }
+//         }
+//     } else if (reqItem && reqItem.entrust_type_id == 0) {
+//         //处理订单
+//         let res = await EntrustModel.processOrder(reqItem, resItem);
+//         if (res) {
+//             if (reqItem.entrust_type_id == 1) {
+//                 this.buyList = await getBuyEntrustList(resItem.coin_exchange_id);
+//                 if (this.buyList && this.buyList.length > 0) {
+//                     let buyItem = this.buyList[0];
+//                     if (buyItem && parseFloat(reqItem.entrust_price) <= parseFloat(buyItem.entrust_price)) {
+//                         await matchOrder(reqItem.entrust_id, reqItem.entrust_type_id, buyItem);
+//                     }
+//                 }
+//             } else {
+//                 this.sellList = await getSellEntrustList(reqItem.coin_exchange_id);
+//                 if (this.sellList && this.sellList.length > 0) {
+//                     let sellItem = this.sellList[0];
+//                     if (sellItem && parseFloat(sellItem.entrust_price) <= parseFloat(resItem.entrust_price)) {
+//                         await matchOrder(resItem.entrust_id, resItem.entrust_type_id, sellItem);
+//                     }
+//                 }
+//             }
+//         }
+//     } else {
+//     }
+// }

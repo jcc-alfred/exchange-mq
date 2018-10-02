@@ -59,7 +59,6 @@ class EntrustModel {
     async getEntrustByEntrustId(entrustId, coinExchangeId, entrustTypeId, refresh = false) {
         let cache = await Cache.init(config.cacheDB.order);
         try {
-
             let ckey = (entrustTypeId == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + coinExchangeId;
             if (await cache.exists(ckey) && !refresh) {
                 let cRes = await cache.hgetall(ckey);
@@ -72,10 +71,6 @@ class EntrustModel {
                     let res = await cnt.execReader(sql, entrustId);
                     cnt.close();
                     if (res) {
-                        if (res == null || res.entrust_id == null) {
-                            console.error('1getdax:' + res + ' --entrustId:' + entrustId + ' --coinExchangeId:' + coinExchangeId + ' --entrustTypeId:' + entrustTypeId + ' --refresh:' + refresh);
-                            console.log('1getdax:' + res + ' --entrustId:' + entrustId + ' --coinExchangeId:' + coinExchangeId + ' --entrustTypeId:' + entrustTypeId + ' --refresh:' + refresh);
-                        }
                         await cache.hset(ckey, res.entrust_id, res);
                         cache.close();
                     }
@@ -85,13 +80,9 @@ class EntrustModel {
 
             }
             let cnt = await DB.cluster('salve');
-            let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
-            let res = await cnt.execReader(sql, entrustId);
+            let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)`;
+            let res = await cnt.execReader(sql, [entrustId]);
             cnt.close();
-            if (res == null || res.entrust_id == null) {
-                console.error('2getdax:' + res + ' --entrustId:' + entrustId + ' --coinExchangeId:' + coinExchangeId + ' --entrustTypeId:' + entrustTypeId + ' --refresh:' + refresh);
-                console.log('2getdax:' + res + ' --entrustId:' + entrustId + ' --coinExchangeId:' + coinExchangeId + ' --entrustTypeId:' + entrustTypeId + ' --refresh:' + refresh);
-            }
             if (res) {
                 await cache.hset(ckey, res.entrust_id, res);
                 //let cRes = await cache.hgetall(ckey);
@@ -309,414 +300,675 @@ class EntrustModel {
 
     }
 
+    // async processOrder(reqItem, resItem) {
+    //     console.log("start process" + reqItem.entrust_id + "--" + resItem.entrust_id);
+    //     let reqEntrustStatus = 0;
+    //     let reqEntrustStatusName = '待成交';
+    //     let resEntrustStatus = 0;
+    //     let resEntrustStatusName = '待成交';
+    //     let tradePrice = 0;
+    //     let tradeVolume = 0;
+    //     if (parseFloat(reqItem.no_completed_volume) > parseFloat(resItem.no_completed_volume)) {
+    //         tradeVolume = resItem.no_completed_volume;
+    //         reqEntrustStatus = 1;
+    //         reqEntrustStatusName = '部分成交';
+    //         resEntrustStatus = 2;
+    //         resEntrustStatusName = '已完成';
+    //     } else if (parseFloat(reqItem.no_completed_volume) < parseFloat(resItem.no_completed_volume)) {
+    //         tradeVolume = reqItem.no_completed_volume;
+    //         reqEntrustStatus = 2;
+    //         reqEntrustStatusName = '已完成';
+    //         resEntrustStatus = 1;
+    //         resEntrustStatusName = '部分成交';
+    //     } else {
+    //         tradeVolume = reqItem.no_completed_volume;
+    //         reqEntrustStatus = 2;
+    //         reqEntrustStatusName = '已完成';
+    //         resEntrustStatus = 2;
+    //         resEntrustStatusName = '已完成';
+    //     }
+    //     if (parseFloat(reqItem.entrust_price) >= parseFloat(resItem.entrust_price)) {
+    //         tradePrice = resItem.entrust_price;
+    //     } else {
+    //         tradePrice = reqItem.entrust_price;
+    //     }
+    //     let coinExchangeList = await CoinModel.getCoinExchangeList();
+    //     let coinEx = coinExchangeList.find(item => item.coin_exchange_id == reqItem.coin_exchange_id);
+    //     let tradeAmount = Utils.checkDecimal(Utils.mymul(tradeVolume, tradePrice), coinEx.exchange_decimal_digits);
+    //     let reqTotalAmount = Utils.checkDecimal(Utils.add(reqItem.completed_total_amount, tradeAmount), coinEx.exchange_decimal_digits);
+    //     let reqAvgPrice = Utils.checkDecimal(Utils.div(reqTotalAmount, Utils.add(reqItem.completed_volume, tradeVolume)), coinEx.exchange_decimal_digits);
+    //     let resTotalAmount = Utils.checkDecimal(Utils.add(resItem.completed_total_amount, tradeAmount), coinEx.exchange_decimal_digits);
+    //     let resAvgPrice = Utils.checkDecimal(Utils.div(resTotalAmount, Utils.add(resItem.completed_volume, tradeVolume)), coinEx.exchange_decimal_digits);
+    //     //buy order
+    //     if (reqItem.entrust_type_id == 1) {
+    //         console.log("start process buyitme" + reqItem.entrust_id + "--sell" + resItem.entrust_id);
+    //         let cnt = await DB.cluster('master');
+    //         let res = 0;
+    //         try {
+    //             cnt.transaction();
+    //             //buy entrust
+    //             console.log("start transaction");
+    //             let reqTradeFees = Utils.checkDecimal(Utils.mymul(tradeVolume, reqItem.trade_fees_rate), coinEx.decimal_digits);
+    //             let reqEntrustRes = await cnt.edit('m_entrust', {
+    //                 completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
+    //                 no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
+    //                 completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
+    //                 average_price: reqAvgPrice,
+    //                 trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
+    //                 entrust_status: reqEntrustStatus,
+    //                 entrust_status_name: reqEntrustStatusName
+    //             }, {entrust_id: reqItem.entrust_id});
+    //             //sell entrust
+    //             let resTradeFees = Utils.checkDecimal(Utils.mymul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
+    //             let resEntrustRes = await cnt.edit('m_entrust', {
+    //                 completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
+    //                 no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
+    //                 completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
+    //                 average_price: resAvgPrice,
+    //                 trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
+    //                 entrust_status: resEntrustStatus,
+    //                 entrust_status_name: resEntrustStatusName
+    //             }, {entrust_id: resItem.entrust_id});
+    //             //买单用户
+    //             // + 购买数量
+    //             let reqBuyCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(1, reqItem.trade_fees_rate)), coinEx.decimal_digits);
+    //             let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
+    //                                                     where user_id = ? and coin_id = ?`, [reqBuyCoin, reqBuyCoin, reqItem.user_id, coinEx.coin_id]);
+    //             // - 冻结数量
+    //             let reqAvailableCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(reqItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
+    //             let reqFrozenCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, reqItem.entrust_price), coinEx.exchange_decimal_digits);
+    //             let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
+    //                                                             where user_id = ? and coin_id = ?`, [reqAvailableCoin, reqFrozenCoin, tradeAmount, reqItem.user_id, coinEx.exchange_coin_id]);
+    //             console.log(reqFrozenCoin);
+    //             //卖单用户
+    //             //- 冻结数量
+    //             let resBuyCoin = Utils.checkDecimal(Utils.mymul(tradeAmount, Utils.sub(1, resItem.trade_fees_rate)), coinEx.exchange_decimal_digits);
+    //             let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
+    //                                                     where user_id = ? and coin_id = ?`, [tradeVolume, tradeVolume, resItem.user_id, coinEx.coin_id]);
+    //             console.log(tradeVolume);
+    //             // + 卖出金额
+    //             let resUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
+    //                                                             where user_id = ? and coin_id = ?`, [resBuyCoin, resBuyCoin, resItem.user_id, coinEx.exchange_coin_id]);
+    //
+    //             //更新用户资产缓存
+    //             let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id, true);
+    //             let resCoinAssetsList = await AssetsModel.getUserAssetsByUserId(resItem.user_id, true);
+    //             //买单用户资产变更日志
+    //             let reqCoinAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
+    //             let reqCoinExchangeAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
+    //             let reqBuyCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.coin_id, coinEx.coin_unit, reqBuyCoin, reqCoinAssets.balance, 1, 3, '买入');
+    //             let reqSellCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, tradeAmount, reqCoinExchangeAssets.balance, 2, 4, '卖出');
+    //             //卖单用户资产变更日志
+    //             let resCoinAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
+    //             let resCoinExchangeAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
+    //             let resBuyCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.coin_id, coinEx.coin_unit, tradeVolume, resCoinAssets.balance, 2, 4, '卖出');
+    //             let resSellCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, resBuyCoin, resCoinExchangeAssets.balance, 1, 3, '买入');
+    //             //成交记录
+    //             let orderParams = {
+    //                 serial_num: reqItem.serial_num,
+    //                 coin_exchange_id: reqItem.coin_exchange_id,
+    //                 buy_user_id: reqItem.user_id,
+    //                 sell_user_id: resItem.user_id,
+    //                 buy_entrust_id: reqItem.entrust_id,
+    //                 sell_entrust_id: resItem.entrust_id,
+    //                 trade_price: tradePrice,
+    //                 trade_volume: tradeVolume,
+    //                 trade_amount: tradeAmount,
+    //                 buy_fees: reqTradeFees,
+    //                 sell_fees: resTradeFees,
+    //                 trigger_type_id: reqItem.entrust_type_id,
+    //                 proc_bonus_status: 1
+    //             };
+    //             let orderRes = await cnt.edit('m_order', orderParams);
+    //             if (orderRes.affectedRows) {
+    //                 await this.addOrder({...orderParams, order_id: orderRes.insertId, create_time: Date.now()});
+    //             }
+    //             if (reqEntrustRes.affectedRows && resEntrustRes.affectedRows &&
+    //                 reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
+    //                 resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
+    //                 cnt.commit();
+    //                 console.log("commit");
+    //                 let req = {
+    //                     entrust_id: reqItem.entrust_id,
+    //                     coin_exchange_id: reqItem.coin_exchange_id,
+    //                     user_id: reqItem.user_id,
+    //                     serial_num: reqItem.serial_num,
+    //                     trade_fees_rate: reqItem.trade_fees_rate,
+    //                     entrust_volume: reqItem.entrust_volume,
+    //                     entrust_price: reqItem.entrust_price,
+    //                     entrust_type_id: reqItem.entrust_type_id,
+    //                     completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
+    //                     no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
+    //                     completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
+    //                     average_price: reqAvgPrice,
+    //                     trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
+    //                     entrust_status: reqEntrustStatus,
+    //                     entrust_status_name: reqEntrustStatusName,
+    //                     create_time: reqItem.create_time
+    //                 };
+    //                 let res = {
+    //                     entrust_id: resItem.entrust_id,
+    //                     coin_exchange_id: resItem.coin_exchange_id,
+    //                     user_id: resItem.user_id,
+    //                     serial_num: resItem.serial_num,
+    //                     trade_fees_rate: resItem.trade_fees_rate,
+    //                     entrust_volume: resItem.entrust_volume,
+    //                     entrust_price: resItem.entrust_price,
+    //                     entrust_type_id: resItem.entrust_type_id,
+    //                     completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
+    //                     no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
+    //                     completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
+    //                     average_price: resAvgPrice,
+    //                     trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
+    //                     entrust_status: resEntrustStatus,
+    //                     entrust_status_name: resEntrustStatusName,
+    //                     create_time: resItem.create_time
+    //                 };
+    //
+    //                 if (reqEntrustStatus == 1) {
+    //                     await this.updateEntrust(config.cacheKey.Buy_Entrust + reqItem.coin_exchange_id, req.entrust_id, req);
+    //                     await this.updateEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id, req);
+    //                     socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
+    //                     socket.emit('userEntrustList', {
+    //                         user_id: reqItem.user_id,
+    //                         coin_exchange_id: reqItem.coin_exchange_id
+    //                     });
+    //
+    //                 } else if (reqEntrustStatus == 2) {
+    //                     await this.deleteEntrust(config.cacheKey.Buy_Entrust + reqItem.coin_exchange_id, req.entrust_id);
+    //                     await this.deleteEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id);
+    //                     socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
+    //                     socket.emit('userEntrustList', {
+    //                         user_id: reqItem.user_id,
+    //                         coin_exchange_id: reqItem.coin_exchange_id
+    //                     });
+    //                     socket.emit('historyEntrustList', {
+    //                         user_id: reqItem.user_id,
+    //                         coin_exchange_id: reqItem.coin_exchange_id
+    //                     });
+    //                 }
+    //                 if (resEntrustStatus == 1) {
+    //                     await this.updateEntrust(config.cacheKey.Sell_Entrust + resItem.coin_exchange_id, res.entrust_id, res);
+    //                     await this.updateEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id, res);
+    //                     socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
+    //                     socket.emit('userEntrustList', {
+    //                         user_id: resItem.user_id,
+    //                         coin_exchange_id: resItem.coin_exchange_id
+    //                     });
+    //                 } else if (resEntrustStatus == 2) {
+    //                     await this.deleteEntrust(config.cacheKey.Sell_Entrust + resItem.coin_exchange_id, res.entrust_id);
+    //                     await this.deleteEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id);
+    //                     socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
+    //                     socket.emit('userEntrustList', {
+    //                         user_id: resItem.user_id,
+    //                         coin_exchange_id: resItem.coin_exchange_id
+    //                     });
+    //                     socket.emit('historyEntrustList', {
+    //                         user_id: resItem.user_id,
+    //                         coin_exchange_id: resItem.coin_exchange_id
+    //                     });
+    //                 }
+    //             } else {
+    //                 cnt.rollback();
+    //                 console.log("rollback" + res);
+    //                 return res;
+    //             }
+    //             res = 1;
+    //         } catch (error) {
+    //             console.error(error);
+    //             cnt.rollback();
+    //             throw error;
+    //         } finally {
+    //             cnt.close();
+    //         }
+    //         console.log("finally" + res);
+    //         return res;
+    //     }
+    //     if (reqItem.entrust_type_id == 0) {
+    //         let cnt = await DB.cluster('master');
+    //         let res = 0;
+    //         try {
+    //             cnt.transaction();
+    //             console.log("transaction");
+    //             //sell entrust
+    //             let reqTradeFees = Utils.checkDecimal(Utils.mymul(tradeAmount, reqItem.trade_fees_rate), coinEx.exchange_decimal_digits);
+    //             let reqEntrustRes = await cnt.edit('m_entrust', {
+    //                 completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
+    //                 no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
+    //                 completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
+    //                 average_price: reqAvgPrice,
+    //                 trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
+    //                 entrust_status: reqEntrustStatus,
+    //                 entrust_status_name: reqEntrustStatusName
+    //             }, {entrust_id: reqItem.entrust_id});
+    //             //buy entrust
+    //             let resTradeFees = Utils.checkDecimal(Utils.mymul(tradeVolume, resItem.trade_fees_rate), coinEx.decimal_digits);
+    //             let resEntrustRes = await cnt.edit('m_entrust', {
+    //                 completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
+    //                 no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
+    //                 completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
+    //                 average_price: resAvgPrice,
+    //                 trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
+    //                 entrust_status: resEntrustStatus,
+    //                 entrust_status_name: resEntrustStatusName
+    //             }, {entrust_id: resItem.entrust_id});
+    //             //卖单用户
+    //             //- 冻结数量
+    //             let reqSellCoin = Utils.checkDecimal(Utils.mymul(tradeAmount, Utils.sub(1, reqItem.trade_fees_rate)), coinEx.exchange_decimal_digits);
+    //             let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
+    //                                                     where user_id = ? and coin_id = ? and frozen >= ?`, [tradeVolume, tradeVolume, reqItem.user_id, coinEx.coin_id, tradeVolume]);
+    //             if (reqUpdCoinAssets.affectedRows == 0) {
+    //                 console.log(reqItem);
+    //             }
+    //             // + 卖出金额
+    //             let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
+    //                                                             where user_id = ? and coin_id = ?`, [reqSellCoin, reqSellCoin, reqItem.user_id, coinEx.exchange_coin_id]);
+    //             //买单用户
+    //             // + 购买数量
+    //             let resBuyCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(1, resItem.trade_fees_rate)), coinEx.decimal_digits);
+    //             let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
+    //                                                     where user_id = ? and coin_id = ?`, [resBuyCoin, resBuyCoin, resItem.user_id, coinEx.coin_id]);
+    //             // - 冻结数量
+    //             let resAvailableCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(resItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
+    //             let resFrozenCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, resItem.entrust_price), coinEx.exchange_decimal_digits);
+    //             let resUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
+    //                                                             where user_id = ? and coin_id = ? and frozen >= ?`, [resAvailableCoin, resFrozenCoin, tradeAmount, resItem.user_id, coinEx.exchange_coin_id, resFrozenCoin]);
+    //             if (resUpdExchangeCoinAssets.affectedRows == 0) {
+    //                 console.log(resItem);
+    //             }
+    //             //更新用户资产缓存
+    //             let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id, true);
+    //             let resCoinAssetsList = await AssetsModel.getUserAssetsByUserId(resItem.user_id, true);
+    //             //卖单用户资产变更日志
+    //             let reqCoinAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
+    //             let reqCoinExchangeAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
+    //             let reqSellCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.coin_id, coinEx.coin_unit, tradeVolume, reqCoinAssets.balance, 2, 4, '卖出');
+    //             let reqBuyCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, reqSellCoin, reqCoinExchangeAssets.balance, 1, 3, '买入');
+    //             //买单用户资产变更日志
+    //             let resCoinAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
+    //             let resCoinExchangeAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
+    //             let resBuyCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.coin_id, coinEx.coin_unit, resBuyCoin, resCoinAssets.balance, 1, 3, '买入');
+    //             let resSellCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, tradeAmount, resCoinExchangeAssets.balance, 2, 4, '卖出');
+    //             //成交记录
+    //             let orderParams = {
+    //                 serial_num: reqItem.serial_num,
+    //                 coin_exchange_id: reqItem.coin_exchange_id,
+    //                 buy_user_id: resItem.user_id,
+    //                 sell_user_id: reqItem.user_id,
+    //                 buy_entrust_id: resItem.entrust_id,
+    //                 sell_entrust_id: reqItem.entrust_id,
+    //                 trade_price: tradePrice,
+    //                 trade_volume: tradeVolume,
+    //                 trade_amount: tradeAmount,
+    //                 buy_fees: resTradeFees,
+    //                 sell_fees: reqTradeFees,
+    //                 trigger_type_id: reqItem.entrust_type_id,
+    //                 proc_bonus_status: 1
+    //             };
+    //             let orderRes = await cnt.edit('m_order', orderParams);
+    //             if (orderRes.affectedRows) {
+    //                 await this.addOrder({...orderParams, order_id: orderRes.insertId, create_time: Date.now()});
+    //             }
+    //             if (reqEntrustRes.affectedRows && resEntrustRes.affectedRows &&
+    //                 reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
+    //                 resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
+    //                 cnt.commit();
+    //                 console.log("commit");
+    //                 let req = {
+    //                     entrust_id: reqItem.entrust_id,
+    //                     coin_exchange_id: reqItem.coin_exchange_id,
+    //                     user_id: reqItem.user_id,
+    //                     serial_num: reqItem.serial_num,
+    //                     trade_fees_rate: reqItem.trade_fees_rate,
+    //                     entrust_volume: reqItem.entrust_volume,
+    //                     entrust_price: reqItem.entrust_price,
+    //                     entrust_type_id: reqItem.entrust_type_id,
+    //                     completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
+    //                     no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
+    //                     completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
+    //                     average_price: reqAvgPrice,
+    //                     trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
+    //                     entrust_status: reqEntrustStatus,
+    //                     entrust_status_name: reqEntrustStatusName,
+    //                     create_time: reqItem.create_time
+    //                 };
+    //                 let res = {
+    //                     entrust_id: resItem.entrust_id,
+    //                     coin_exchange_id: resItem.coin_exchange_id,
+    //                     user_id: resItem.user_id,
+    //                     serial_num: resItem.serial_num,
+    //                     trade_fees_rate: resItem.trade_fees_rate,
+    //                     entrust_volume: resItem.entrust_volume,
+    //                     entrust_price: resItem.entrust_price,
+    //                     entrust_type_id: resItem.entrust_type_id,
+    //                     completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
+    //                     no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
+    //                     completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
+    //                     average_price: resAvgPrice,
+    //                     trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
+    //                     entrust_status: resEntrustStatus,
+    //                     entrust_status_name: resEntrustStatusName,
+    //                     create_time: resItem.create_time
+    //                 };
+    //                 if (reqEntrustStatus == 1) {
+    //                     await this.updateEntrust(config.cacheKey.Sell_Entrust + reqItem.coin_exchange_id, req.entrust_id, req);
+    //                     await this.updateEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id, req);
+    //                     socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
+    //                     socket.emit('userEntrustList', {
+    //                         user_id: reqItem.user_id,
+    //                         coin_exchange_id: reqItem.coin_exchange_id
+    //                     });
+    //                 } else if (reqEntrustStatus == 2) {
+    //                     await this.deleteEntrust(config.cacheKey.Sell_Entrust + reqItem.coin_exchange_id, req.entrust_id);
+    //                     await this.deleteEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id);
+    //                     socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
+    //                     socket.emit('userEntrustList', {
+    //                         user_id: reqItem.user_id,
+    //                         coin_exchange_id: reqItem.coin_exchange_id
+    //                     });
+    //                     socket.emit('historyEntrustList', {
+    //                         user_id: reqItem.user_id,
+    //                         coin_exchange_id: reqItem.coin_exchange_id
+    //                     });
+    //                 }
+    //                 if (resEntrustStatus == 1) {
+    //                     await this.updateEntrust(config.cacheKey.Buy_Entrust + resItem.coin_exchange_id, res.entrust_id, res);
+    //                     await this.updateEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id, res);
+    //                     socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
+    //                     socket.emit('userEntrustList', {
+    //                         user_id: resItem.user_id,
+    //                         coin_exchange_id: resItem.coin_exchange_id
+    //                     });
+    //                 } else if (resEntrustStatus == 2) {
+    //                     await this.deleteEntrust(config.cacheKey.Buy_Entrust + resItem.coin_exchange_id, res.entrust_id);
+    //                     await this.deleteEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id);
+    //                     socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
+    //                     socket.emit('userEntrustList', {
+    //                         user_id: resItem.user_id,
+    //                         coin_exchange_id: resItem.coin_exchange_id
+    //                     });
+    //                     socket.emit('historyEntrustList', {
+    //                         user_id: resItem.user_id,
+    //                         coin_exchange_id: resItem.coin_exchange_id
+    //                     });
+    //                 }
+    //             } else {
+    //                 cnt.rollback();
+    //                 console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---rollback" + res);
+    //                 return res;
+    //             }
+    //             res = 1
+    //         } catch (error) {
+    //             console.error(error);
+    //             cnt.rollback();
+    //             throw error;
+    //         } finally {
+    //             cnt.close();
+    //         }
+    //         console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---finally" + res);
+    //         return res;
+    //     }
+    // }
+
     async processOrder(reqItem, resItem) {
-        console.log("start process" + reqItem.entrust_id + "--" + resItem.entrust_id);
+        // asume reqItem -->BuyItem
+        //  resItem -->SellItem
+        if (reqItem.entrust_type == 0) {
+            let res = await processOrder(resItem, reqItem);
+            return res;
+        }
+        console.log("start process buyitem-->" + reqItem.entrust_id + "  sellitem-->" + resItem.entrust_id);
+        console.log(reqItem);
+        console.log(resItem);
         let reqEntrustStatus = 0;
         let reqEntrustStatusName = '待成交';
         let resEntrustStatus = 0;
         let resEntrustStatusName = '待成交';
         let tradePrice = 0;
         let tradeVolume = 0;
-        if (parseFloat(reqItem.no_completed_volume) > parseFloat(resItem.no_completed_volume)) {
+        let NextOrder =null;
+        if (reqItem.no_completed_volume > resItem.no_completed_volume) {
             tradeVolume = resItem.no_completed_volume;
             reqEntrustStatus = 1;
             reqEntrustStatusName = '部分成交';
+            NextOrder = reqItem;
             resEntrustStatus = 2;
             resEntrustStatusName = '已完成';
-        } else if (parseFloat(reqItem.no_completed_volume) < parseFloat(resItem.no_completed_volume)) {
+        } else if (reqItem.no_completed_volume < resItem.no_completed_volume) {
             tradeVolume = reqItem.no_completed_volume;
             reqEntrustStatus = 2;
             reqEntrustStatusName = '已完成';
             resEntrustStatus = 1;
             resEntrustStatusName = '部分成交';
+            NextOrder = resItem;
         } else {
             tradeVolume = reqItem.no_completed_volume;
             reqEntrustStatus = 2;
             reqEntrustStatusName = '已完成';
             resEntrustStatus = 2;
             resEntrustStatusName = '已完成';
+            NextOrder = false;
         }
-        if (parseFloat(reqItem.entrust_price) >= parseFloat(resItem.entrust_price)) {
+
+        if (reqItem.entrust_price >= resItem.entrust_price) {
             tradePrice = resItem.entrust_price;
         } else {
-            tradePrice = reqItem.entrust_price;
+            return false
         }
         let coinExchangeList = await CoinModel.getCoinExchangeList();
         let coinEx = coinExchangeList.find(item => item.coin_exchange_id == reqItem.coin_exchange_id);
-        let tradeAmount = Utils.checkDecimal(Utils.mul(tradeVolume, tradePrice), coinEx.exchange_decimal_digits);
+        let tradeAmount = Utils.checkDecimal(Utils.mymul(tradeVolume, tradePrice), coinEx.exchange_decimal_digits);
         let reqTotalAmount = Utils.checkDecimal(Utils.add(reqItem.completed_total_amount, tradeAmount), coinEx.exchange_decimal_digits);
         let reqAvgPrice = Utils.checkDecimal(Utils.div(reqTotalAmount, Utils.add(reqItem.completed_volume, tradeVolume)), coinEx.exchange_decimal_digits);
         let resTotalAmount = Utils.checkDecimal(Utils.add(resItem.completed_total_amount, tradeAmount), coinEx.exchange_decimal_digits);
         let resAvgPrice = Utils.checkDecimal(Utils.div(resTotalAmount, Utils.add(resItem.completed_volume, tradeVolume)), coinEx.exchange_decimal_digits);
         //buy order
-        if (reqItem.entrust_type_id == 1) {
-            console.log("start process buyitme" + reqItem.entrust_id + "--sell" + resItem.entrust_id);
-            let cnt = await DB.cluster('master');
-            let res = 0;
-            try {
-                cnt.transaction();
-                //buy entrust
-                console.log("start transaction");
-                let reqTradeFees = Utils.checkDecimal(Utils.mul(tradeVolume, reqItem.trade_fees_rate), coinEx.decimal_digits);
-                let reqEntrustRes = await cnt.edit('m_entrust', {
+        let cnt = await DB.cluster('master');
+        let status = 0;
+        try {
+            cnt.transaction();
+            console.log("start transaction");
+            //buy entrust
+            let reqTradeFees = Utils.checkDecimal(Utils.mymul(tradeVolume, reqItem.trade_fees_rate), coinEx.decimal_digits);
+            let reqEntrustRes = await cnt.edit('m_entrust', {
+                completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
+                no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
+                completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
+                average_price: reqAvgPrice,
+                trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
+                entrust_status: reqEntrustStatus,
+                entrust_status_name: reqEntrustStatusName
+            }, {entrust_id: reqItem.entrust_id});
+            if (reqEntrustRes.affectedRows) {
+                console.log("修改买单"+reqItem.entrust_id+"， 完成单加 " +tradeVolume+" 状态为 "+resEntrustStatusName );
+            }
+            //sell entrust
+            let resTradeFees = Utils.checkDecimal(Utils.mymul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
+            let resEntrustRes = await cnt.edit('m_entrust', {
+                completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
+                no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
+                completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
+                average_price: resAvgPrice,
+                trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
+                entrust_status: resEntrustStatus,
+                entrust_status_name: resEntrustStatusName
+            }, {entrust_id: resItem.entrust_id});
+            if (reqEntrustRes.affectedRows) {
+                console.log("修改卖单"+resItem.entrust_id+"， 完成单加 " +tradeVolume+" 状态为 "+resEntrustStatusName );
+            }
+            //买单用户
+            // + 购买数量
+            let reqBuyCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(1, reqItem.trade_fees_rate)), coinEx.decimal_digits);
+            let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
+                                                    where user_id = ? and coin_id = ?`, [reqBuyCoin, reqBuyCoin, reqItem.user_id, coinEx.coin_id]);
+            if (reqUpdCoinAssets.affectedRows) {
+                console.log("更新买家用户资产 " + reqItem.entrust_id +"  币  "+coinEx.coin_id +" 余额增加"+reqBuyCoin);
+            }
+            // - 冻结数量
+            let reqAvailableCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(reqItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
+            let reqFrozenCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, reqItem.entrust_price), coinEx.exchange_decimal_digits);
+            let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
+                                                            where user_id = ? and coin_id = ?`, [reqAvailableCoin, reqFrozenCoin, tradeAmount, reqItem.user_id, coinEx.exchange_coin_id]);
+            if (reqUpdExchangeCoinAssets.affectedRows) {
+                console.log("更新买家用户资产 " + resItem.entrust_id +"  币  "+coinEx.exchange_coin_id +" 可用增加 "+reqAvailableCoin+" 冻结减少 "+reqFrozenCoin+" 余额减少 "+tradeAmount);
+            }
+            //卖单用户
+            //- 冻结数量
+            let resBuyCoin = Utils.checkDecimal(Utils.mymul(tradeAmount, Utils.sub(1, resItem.trade_fees_rate)), coinEx.exchange_decimal_digits);
+            let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
+                                                    where user_id = ? and coin_id = ?`, [tradeVolume, tradeVolume, resItem.user_id, coinEx.coin_id]);
+            if (resUpdCoinAssets.affectedRows) {
+                console.log("更新卖家用户资产 " + resItem.entrust_id +"  币  "+coinEx.coin_id +" 余额减少"+tradeVolume+"冻结减少"+tradeVolume);
+            }
+            // + 卖出金额
+            let resUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
+                                                            where user_id = ? and coin_id = ?`, [resBuyCoin, resBuyCoin, resItem.user_id, coinEx.exchange_coin_id]);
+            if (resUpdExchangeCoinAssets.affectedRows) {
+                console.log("更新卖家用户资产 " + resItem.entrust_id +"  币  "+coinEx.exchange_coin_id +" 余额增加"+reqBuyCoin);
+            }
+            //更新用户资产缓存
+            let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id, true);
+            let resCoinAssetsList = await AssetsModel.getUserAssetsByUserId(resItem.user_id, true);
+            if (reqCoinAssetsList && resCoinAssetsList) {
+                console.log("更新用户资产缓存成功");
+            }
+            //买单用户资产变更日志
+            let reqCoinAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
+            let reqCoinExchangeAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
+            let reqBuyCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.coin_id, coinEx.coin_unit, reqBuyCoin, reqCoinAssets.balance, 1, 3, '买入');
+            let reqSellCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, tradeAmount, reqCoinExchangeAssets.balance, 2, 4, '卖出');
+            //卖单用户资产变更日志
+            let resCoinAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
+            let resCoinExchangeAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
+            let resBuyCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.coin_id, coinEx.coin_unit, tradeVolume, resCoinAssets.balance, 2, 4, '卖出');
+            let resSellCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, resBuyCoin, resCoinExchangeAssets.balance, 1, 3, '买入');
+            //成交记录
+            if (resBuyCoin && resSellCoinLog && reqCoinAssets && reqSellCoinLog) {
+                console.log("增加买卖用户资产变更日志成功");
+            }
+            let orderParams = {
+                serial_num: reqItem.serial_num,
+                coin_exchange_id: reqItem.coin_exchange_id,
+                buy_user_id: reqItem.user_id,
+                sell_user_id: resItem.user_id,
+                buy_entrust_id: reqItem.entrust_id,
+                sell_entrust_id: resItem.entrust_id,
+                trade_price: tradePrice,
+                trade_volume: tradeVolume,
+                trade_amount: tradeAmount,
+                buy_fees: reqTradeFees,
+                sell_fees: resTradeFees,
+                trigger_type_id: reqItem.entrust_type_id,
+                proc_bonus_status: 1
+            };
+            let orderRes = await cnt.edit('m_order', orderParams);
+            if (orderRes.affectedRows) {
+                await this.addOrder({...orderParams, order_id: orderRes.insertId, create_time: Date.now()});
+                console.log("增加新的order记录"+orderParams);
+            }
+            if (reqEntrustRes.affectedRows && resEntrustRes.affectedRows &&
+                reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
+                resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
+                cnt.commit();
+                let req = {
+                    entrust_id: reqItem.entrust_id,
+                    coin_exchange_id: reqItem.coin_exchange_id,
+                    user_id: reqItem.user_id,
+                    serial_num: reqItem.serial_num,
+                    trade_fees_rate: reqItem.trade_fees_rate,
+                    entrust_volume: reqItem.entrust_volume,
+                    entrust_price: reqItem.entrust_price,
+                    entrust_type_id: reqItem.entrust_type_id,
                     completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
                     no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
                     completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
                     average_price: reqAvgPrice,
                     trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
                     entrust_status: reqEntrustStatus,
-                    entrust_status_name: reqEntrustStatusName
-                }, {entrust_id: reqItem.entrust_id});
-                //sell entrust
-                let resTradeFees = Utils.checkDecimal(Utils.mul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
-                let resEntrustRes = await cnt.edit('m_entrust', {
+                    entrust_status_name: reqEntrustStatusName,
+                    create_time: reqItem.create_time
+                };
+                let res = {
+                    entrust_id: resItem.entrust_id,
+                    coin_exchange_id: resItem.coin_exchange_id,
+                    user_id: resItem.user_id,
+                    serial_num: resItem.serial_num,
+                    trade_fees_rate: resItem.trade_fees_rate,
+                    entrust_volume: resItem.entrust_volume,
+                    entrust_price: resItem.entrust_price,
+                    entrust_type_id: resItem.entrust_type_id,
                     completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
                     no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
                     completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
                     average_price: resAvgPrice,
                     trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
                     entrust_status: resEntrustStatus,
-                    entrust_status_name: resEntrustStatusName
-                }, {entrust_id: resItem.entrust_id});
-                //买单用户
-                // + 购买数量
-                let reqBuyCoin = Utils.checkDecimal(Utils.mul(tradeVolume, Utils.sub(1, reqItem.trade_fees_rate)), coinEx.decimal_digits);
-                let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
-                                                        where user_id = ? and coin_id = ?`, [reqBuyCoin, reqBuyCoin, reqItem.user_id, coinEx.coin_id]);
-                // - 冻结数量
-                let reqAvailableCoin = Utils.checkDecimal(Utils.mul(tradeVolume, Utils.sub(reqItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
-                let reqFrozenCoin = Utils.checkDecimal(Utils.mul(tradeVolume, reqItem.entrust_price), coinEx.exchange_decimal_digits);
-                let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
-                                                                where user_id = ? and coin_id = ?`, [reqAvailableCoin, reqFrozenCoin, tradeAmount, reqItem.user_id, coinEx.exchange_coin_id]);
-                console.log(reqFrozenCoin);
-                //卖单用户
-                //- 冻结数量
-                let resBuyCoin = Utils.checkDecimal(Utils.mul(tradeAmount, Utils.sub(1, resItem.trade_fees_rate)), coinEx.exchange_decimal_digits);
-                let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
-                                                        where user_id = ? and coin_id = ?`, [tradeVolume, tradeVolume, resItem.user_id, coinEx.coin_id]);
-                console.log(tradeVolume);
-                // + 卖出金额
-                let resUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
-                                                                where user_id = ? and coin_id = ?`, [resBuyCoin, resBuyCoin, resItem.user_id, coinEx.exchange_coin_id]);
-
-                //更新用户资产缓存
-                let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id, true);
-                let resCoinAssetsList = await AssetsModel.getUserAssetsByUserId(resItem.user_id, true);
-                //买单用户资产变更日志
-                let reqCoinAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
-                let reqCoinExchangeAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
-                let reqBuyCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.coin_id, coinEx.coin_unit, reqBuyCoin, reqCoinAssets.balance, 1, 3, '买入');
-                let reqSellCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, tradeAmount, reqCoinExchangeAssets.balance, 2, 4, '卖出');
-                //卖单用户资产变更日志
-                let resCoinAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
-                let resCoinExchangeAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
-                let resBuyCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.coin_id, coinEx.coin_unit, tradeVolume, resCoinAssets.balance, 2, 4, '卖出');
-                let resSellCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, resBuyCoin, resCoinExchangeAssets.balance, 1, 3, '买入');
-                //成交记录
-                let orderParams = {
-                    serial_num: reqItem.serial_num,
-                    coin_exchange_id: reqItem.coin_exchange_id,
-                    buy_user_id: reqItem.user_id,
-                    sell_user_id: resItem.user_id,
-                    buy_entrust_id: reqItem.entrust_id,
-                    sell_entrust_id: resItem.entrust_id,
-                    trade_price: tradePrice,
-                    trade_volume: tradeVolume,
-                    trade_amount: tradeAmount,
-                    buy_fees: reqTradeFees,
-                    sell_fees: resTradeFees,
-                    trigger_type_id: reqItem.entrust_type_id,
-                    proc_bonus_status: 1
+                    entrust_status_name: resEntrustStatusName,
+                    create_time: resItem.create_time
                 };
-                let orderRes = await cnt.edit('m_order', orderParams);
-                if (orderRes.affectedRows) {
-                    await this.addOrder({...orderParams, order_id: orderRes.insertId, create_time: Date.now()});
-                }
-                if (reqEntrustRes.affectedRows && resEntrustRes.affectedRows &&
-                    reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
-                    resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
-                    cnt.commit();
-                    console.log("commit");
-                    let req = {
-                        entrust_id: reqItem.entrust_id,
-                        coin_exchange_id: reqItem.coin_exchange_id,
-                        user_id: reqItem.user_id,
-                        serial_num: reqItem.serial_num,
-                        trade_fees_rate: reqItem.trade_fees_rate,
-                        entrust_volume: reqItem.entrust_volume,
-                        entrust_price: reqItem.entrust_price,
-                        entrust_type_id: reqItem.entrust_type_id,
-                        completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
-                        no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
-                        completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
-                        average_price: reqAvgPrice,
-                        trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
-                        entrust_status: reqEntrustStatus,
-                        entrust_status_name: reqEntrustStatusName,
-                        create_time: reqItem.create_time
-                    };
-                    let res = {
-                        entrust_id: resItem.entrust_id,
-                        coin_exchange_id: resItem.coin_exchange_id,
-                        user_id: resItem.user_id,
-                        serial_num: resItem.serial_num,
-                        trade_fees_rate: resItem.trade_fees_rate,
-                        entrust_volume: resItem.entrust_volume,
-                        entrust_price: resItem.entrust_price,
-                        entrust_type_id: resItem.entrust_type_id,
-                        completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
-                        no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
-                        completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
-                        average_price: resAvgPrice,
-                        trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
-                        entrust_status: resEntrustStatus,
-                        entrust_status_name: resEntrustStatusName,
-                        create_time: resItem.create_time
-                    };
 
-                    if (reqEntrustStatus == 1) {
-                        await this.updateEntrust(config.cacheKey.Buy_Entrust + reqItem.coin_exchange_id, req.entrust_id, req);
-                        await this.updateEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id, req);
-                        socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
-                        socket.emit('userEntrustList', {
-                            user_id: reqItem.user_id,
-                            coin_exchange_id: reqItem.coin_exchange_id
-                        });
-
-                    } else if (reqEntrustStatus == 2) {
-                        await this.deleteEntrust(config.cacheKey.Buy_Entrust + reqItem.coin_exchange_id, req.entrust_id);
-                        await this.deleteEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id);
-                        socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
-                        socket.emit('userEntrustList', {
-                            user_id: reqItem.user_id,
-                            coin_exchange_id: reqItem.coin_exchange_id
-                        });
-                        socket.emit('historyEntrustList', {
-                            user_id: reqItem.user_id,
-                            coin_exchange_id: reqItem.coin_exchange_id
-                        });
-                    }
-                    if (resEntrustStatus == 1) {
-                        await this.updateEntrust(config.cacheKey.Sell_Entrust + resItem.coin_exchange_id, res.entrust_id, res);
-                        await this.updateEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id, res);
-                        socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
-                        socket.emit('userEntrustList', {
-                            user_id: resItem.user_id,
-                            coin_exchange_id: resItem.coin_exchange_id
-                        });
-                    } else if (resEntrustStatus == 2) {
-                        await this.deleteEntrust(config.cacheKey.Sell_Entrust + resItem.coin_exchange_id, res.entrust_id);
-                        await this.deleteEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id);
-                        socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
-                        socket.emit('userEntrustList', {
-                            user_id: resItem.user_id,
-                            coin_exchange_id: resItem.coin_exchange_id
-                        });
-                        socket.emit('historyEntrustList', {
-                            user_id: resItem.user_id,
-                            coin_exchange_id: resItem.coin_exchange_id
-                        });
-                    }
-                } else {
-                    cnt.rollback();
-                    console.log("rollback" + res);
-                    return res;
-                }
-                res = 1;
-            } catch (error) {
-                console.error(error);
-                cnt.rollback();
-                throw error;
-            } finally {
-                cnt.close();
-            }
-            console.log("finally" + res);
-            return res;
-        }
-        if (reqItem.entrust_type_id == 0) {
-            let cnt = await DB.cluster('master');
-            let res = 0;
-            try {
-                cnt.transaction();
-                console.log("transaction");
-                //sell entrust
-                let reqTradeFees = Utils.checkDecimal(Utils.mul(tradeAmount, reqItem.trade_fees_rate), coinEx.exchange_decimal_digits);
-                let reqEntrustRes = await cnt.edit('m_entrust', {
-                    completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
-                    no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
-                    completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
-                    average_price: reqAvgPrice,
-                    trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
-                    entrust_status: reqEntrustStatus,
-                    entrust_status_name: reqEntrustStatusName
-                }, {entrust_id: reqItem.entrust_id});
-                //buy entrust
-                let resTradeFees = Utils.checkDecimal(Utils.mul(tradeVolume, resItem.trade_fees_rate), coinEx.decimal_digits);
-                let resEntrustRes = await cnt.edit('m_entrust', {
-                    completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
-                    no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
-                    completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
-                    average_price: resAvgPrice,
-                    trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
-                    entrust_status: resEntrustStatus,
-                    entrust_status_name: resEntrustStatusName
-                }, {entrust_id: resItem.entrust_id});
-                //卖单用户
-                //- 冻结数量
-                let reqSellCoin = Utils.checkDecimal(Utils.mul(tradeAmount, Utils.sub(1, reqItem.trade_fees_rate)), coinEx.exchange_decimal_digits);
-                let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
-                                                        where user_id = ? and coin_id = ? and frozen >= ?`, [tradeVolume, tradeVolume, reqItem.user_id, coinEx.coin_id, tradeVolume]);
-                if (reqUpdCoinAssets.affectedRows == 0) {
-                    console.log(reqItem);
-                }
-                // + 卖出金额
-                let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
-                                                                where user_id = ? and coin_id = ?`, [reqSellCoin, reqSellCoin, reqItem.user_id, coinEx.exchange_coin_id]);
-                //买单用户
-                // + 购买数量
-                let resBuyCoin = Utils.checkDecimal(Utils.mul(tradeVolume, Utils.sub(1, resItem.trade_fees_rate)), coinEx.decimal_digits);
-                let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
-                                                        where user_id = ? and coin_id = ?`, [resBuyCoin, resBuyCoin, resItem.user_id, coinEx.coin_id]);
-                // - 冻结数量
-                let resAvailableCoin = Utils.checkDecimal(Utils.mul(tradeVolume, Utils.sub(resItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
-                let resFrozenCoin = Utils.checkDecimal(Utils.mul(tradeVolume, resItem.entrust_price), coinEx.exchange_decimal_digits);
-                let resUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
-                                                                where user_id = ? and coin_id = ? and frozen >= ?`, [resAvailableCoin, resFrozenCoin, tradeAmount, resItem.user_id, coinEx.exchange_coin_id, resFrozenCoin]);
-                if (resUpdExchangeCoinAssets.affectedRows == 0) {
-                    console.log(resItem);
-                }
-                //更新用户资产缓存
-                let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id, true);
-                let resCoinAssetsList = await AssetsModel.getUserAssetsByUserId(resItem.user_id, true);
-                //卖单用户资产变更日志
-                let reqCoinAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
-                let reqCoinExchangeAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
-                let reqSellCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.coin_id, coinEx.coin_unit, tradeVolume, reqCoinAssets.balance, 2, 4, '卖出');
-                let reqBuyCoinLog = await AssetsLogModel.addUserAssetsLog(reqItem.serial_num, reqItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, reqSellCoin, reqCoinExchangeAssets.balance, 1, 3, '买入');
-                //买单用户资产变更日志
-                let resCoinAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
-                let resCoinExchangeAssets = resCoinAssetsList.find(item => item.coin_id == coinEx.exchange_coin_id);
-                let resBuyCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.coin_id, coinEx.coin_unit, resBuyCoin, resCoinAssets.balance, 1, 3, '买入');
-                let resSellCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, tradeAmount, resCoinExchangeAssets.balance, 2, 4, '卖出');
-                //成交记录
-                let orderParams = {
-                    serial_num: reqItem.serial_num,
-                    coin_exchange_id: reqItem.coin_exchange_id,
-                    buy_user_id: resItem.user_id,
-                    sell_user_id: reqItem.user_id,
-                    buy_entrust_id: resItem.entrust_id,
-                    sell_entrust_id: reqItem.entrust_id,
-                    trade_price: tradePrice,
-                    trade_volume: tradeVolume,
-                    trade_amount: tradeAmount,
-                    buy_fees: resTradeFees,
-                    sell_fees: reqTradeFees,
-                    trigger_type_id: reqItem.entrust_type_id,
-                    proc_bonus_status: 1
-                };
-                let orderRes = await cnt.edit('m_order', orderParams);
-                if (orderRes.affectedRows) {
-                    await this.addOrder({...orderParams, order_id: orderRes.insertId, create_time: Date.now()});
-                }
-                if (reqEntrustRes.affectedRows && resEntrustRes.affectedRows &&
-                    reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
-                    resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
-                    cnt.commit();
-                    console.log("commit");
-                    let req = {
-                        entrust_id: reqItem.entrust_id,
-                        coin_exchange_id: reqItem.coin_exchange_id,
+                if (reqEntrustStatus == 1) {
+                    await this.updateEntrust(config.cacheKey.Buy_Entrust + reqItem.coin_exchange_id, req.entrust_id, req);
+                    await this.updateEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id, req);
+                    socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
+                    socket.emit('userEntrustList', {
                         user_id: reqItem.user_id,
-                        serial_num: reqItem.serial_num,
-                        trade_fees_rate: reqItem.trade_fees_rate,
-                        entrust_volume: reqItem.entrust_volume,
-                        entrust_price: reqItem.entrust_price,
-                        entrust_type_id: reqItem.entrust_type_id,
-                        completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
-                        no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
-                        completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
-                        average_price: reqAvgPrice,
-                        trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
-                        entrust_status: reqEntrustStatus,
-                        entrust_status_name: reqEntrustStatusName,
-                        create_time: reqItem.create_time
-                    };
-                    let res = {
-                        entrust_id: resItem.entrust_id,
-                        coin_exchange_id: resItem.coin_exchange_id,
-                        user_id: resItem.user_id,
-                        serial_num: resItem.serial_num,
-                        trade_fees_rate: resItem.trade_fees_rate,
-                        entrust_volume: resItem.entrust_volume,
-                        entrust_price: resItem.entrust_price,
-                        entrust_type_id: resItem.entrust_type_id,
-                        completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
-                        no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
-                        completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
-                        average_price: resAvgPrice,
-                        trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
-                        entrust_status: resEntrustStatus,
-                        entrust_status_name: resEntrustStatusName,
-                        create_time: resItem.create_time
-                    };
-                    if (reqEntrustStatus == 1) {
-                        await this.updateEntrust(config.cacheKey.Sell_Entrust + reqItem.coin_exchange_id, req.entrust_id, req);
-                        await this.updateEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id, req);
-                        socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
-                        socket.emit('userEntrustList', {
-                            user_id: reqItem.user_id,
-                            coin_exchange_id: reqItem.coin_exchange_id
-                        });
-                    } else if (reqEntrustStatus == 2) {
-                        await this.deleteEntrust(config.cacheKey.Sell_Entrust + reqItem.coin_exchange_id, req.entrust_id);
-                        await this.deleteEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id);
-                        socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
-                        socket.emit('userEntrustList', {
-                            user_id: reqItem.user_id,
-                            coin_exchange_id: reqItem.coin_exchange_id
-                        });
-                        socket.emit('historyEntrustList', {
-                            user_id: reqItem.user_id,
-                            coin_exchange_id: reqItem.coin_exchange_id
-                        });
-                    }
-                    if (resEntrustStatus == 1) {
-                        await this.updateEntrust(config.cacheKey.Buy_Entrust + resItem.coin_exchange_id, res.entrust_id, res);
-                        await this.updateEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id, res);
-                        socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
-                        socket.emit('userEntrustList', {
-                            user_id: resItem.user_id,
-                            coin_exchange_id: resItem.coin_exchange_id
-                        });
-                    } else if (resEntrustStatus == 2) {
-                        await this.deleteEntrust(config.cacheKey.Buy_Entrust + resItem.coin_exchange_id, res.entrust_id);
-                        await this.deleteEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id);
-                        socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
-                        socket.emit('userEntrustList', {
-                            user_id: resItem.user_id,
-                            coin_exchange_id: resItem.coin_exchange_id
-                        });
-                        socket.emit('historyEntrustList', {
-                            user_id: resItem.user_id,
-                            coin_exchange_id: resItem.coin_exchange_id
-                        });
-                    }
-                } else {
-                    cnt.rollback();
-                    console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---rollback" + res);
-                    return res;
+                        coin_exchange_id: reqItem.coin_exchange_id
+                    });
+
+                } else if (reqEntrustStatus == 2) {
+                    await this.deleteEntrust(config.cacheKey.Buy_Entrust + reqItem.coin_exchange_id, req.entrust_id);
+                    await this.deleteEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id);
+                    socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
+                    socket.emit('userEntrustList', {
+                        user_id: reqItem.user_id,
+                        coin_exchange_id: reqItem.coin_exchange_id
+                    });
+                    socket.emit('historyEntrustList', {
+                        user_id: reqItem.user_id,
+                        coin_exchange_id: reqItem.coin_exchange_id
+                    });
                 }
-                res = 1
-            } catch (error) {
-                console.error(error);
+                if (resEntrustStatus == 1) {
+                    await this.updateEntrust(config.cacheKey.Sell_Entrust + resItem.coin_exchange_id, res.entrust_id, res);
+                    await this.updateEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id, res);
+                    socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
+                    socket.emit('userEntrustList', {
+                        user_id: resItem.user_id,
+                        coin_exchange_id: resItem.coin_exchange_id
+                    });
+                } else if (resEntrustStatus == 2) {
+                    await this.deleteEntrust(config.cacheKey.Sell_Entrust + resItem.coin_exchange_id, res.entrust_id);
+                    await this.deleteEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id);
+                    socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
+                    socket.emit('userEntrustList', {
+                        user_id: resItem.user_id,
+                        coin_exchange_id: resItem.coin_exchange_id
+                    });
+                    socket.emit('historyEntrustList', {
+                        user_id: resItem.user_id,
+                        coin_exchange_id: resItem.coin_exchange_id
+                    });
+                }
+            } else {
                 cnt.rollback();
-                throw error;
-            } finally {
-                cnt.close();
+                console.log("rollback");
+                return false;
             }
-            console.log(reqItem.entrust_id + "---" + resItem.entrust_id + "---finally" + res);
-            return res;
+            status = 1
+        } catch (error) {
+            console.error(error);
+            cnt.rollback();
+            throw error;
+        } finally {
+            cnt.close();
         }
+        if (status == 1) {
+            return NextOrder;
+        } else {
+            return false
+        }
+
     }
 }
 
