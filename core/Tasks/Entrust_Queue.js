@@ -124,14 +124,14 @@ async function matchOrder(entrust) {
         let cache = await Cache.init(config.cacheDB.order);
         try {
             //buy or sell entrust list
-            let ckey = (entrustItem.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrustItem.coin_exchange_id;
-            if (await cache.exists(ckey) && await cache.hexists(ckey, entrustItem.entrust_id)) {
-                await cache.hdel(ckey, entrustItem.entrust_id);
+            let ckey = (entrust.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrust.coin_exchange_id;
+            if (await cache.exists(ckey) && await cache.hexists(ckey, entrust.entrust_id)) {
+                await cache.hdel(ckey, entrust.entrust_id);
             }
             //entrust_ceid_userid
-            let uckey = config.cacheKey.Entrust_UserId + entrustItem.user_id;
-            if (await cache.exists(uckey) && await cache.hexists(uckey, entrustItem.entrust_id)) {
-                await cache.hdel(uckey, entrustItem.entrust_id);
+            let uckey = config.cacheKey.Entrust_UserId + entrust.user_id;
+            if (await cache.exists(uckey) && await cache.hexists(uckey, entrust.entrust_id)) {
+                await cache.hdel(uckey, entrust.entrust_id);
             }
             console.log(entrust.entrust_id+" already complete, skip it, delete entrust from redis");
         }catch (e) {
