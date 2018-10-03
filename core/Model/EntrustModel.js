@@ -306,6 +306,7 @@ class EntrustModel {
         try {
             let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
             let params = await cnt.execQuery(sql, entrust_id);
+            params = params[0]
             let ckey = (params.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + params.coin_exchange_id;
             if (await cache.exists(ckey) && await cache.hexists(ckey, entrust_id)) {
                 await cache.hdel(ckey, entrust_id);
@@ -315,7 +316,7 @@ class EntrustModel {
             if (await cache.exists(uckey) && await cache.hexists(uckey, entrust_id)) {
                 await cache.hdel(uckey, entrust_id);
             }
-            if (params.length > 0) {
+            if (params) {
                 await cache.hset(ckey, params.entrust_id, params);
                 await cache.hset(uckey, entrust_id, params);
                 return params;
@@ -329,6 +330,7 @@ class EntrustModel {
             cnt.close();
         }
     }
+
     async processOrder(reqItem, resItem) {
         // asume reqItem -->BuyItem
         //  resItem -->SellItem
@@ -395,37 +397,18 @@ class EntrustModel {
                         average_price = ?,
                         trade_fees = trade_fees + ?,
                         entrust_status = ?,
-                        entrust_status_name = ?,
+                        entrust_status_name = ?
                         where entrust_id =? and no_completed_volume >? and entrust_status in (1,0)`;
             let reqEntrustRes = await cnt.execQuery(sql,
                 [tradeVolume, tradeVolume, tradeAmount, reqAvgPrice, reqTradeFees, reqEntrustStatus, reqEntrustStatusName, reqItem.entrust_id, tradeVolume])
-
-            // let reqEntrustRes = await cnt.edit('m_entrust', {
-            //     completed_volume: Utils.add(reqItem.completed_volume, tradeVolume),
-            //     no_completed_volume: Utils.sub(reqItem.no_completed_volume, tradeVolume),
-            //     completed_total_amount: Utils.add(reqItem.completed_total_amount, tradeAmount),
-            //     average_price: reqAvgPrice,
-            //     trade_fees: Utils.add(reqItem.trade_fees, reqTradeFees),
-            //     entrust_status: reqEntrustStatus,
-            //     entrust_status_name: reqEntrustStatusName
-            // }, {entrust_id: reqItem.entrust_id},);
             if (reqEntrustRes.affectedRows) {
-                console.log("修改买单" + reqItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + resEntrustStatusName);
+                console.log("修改买单" + reqItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + reqEntrustStatus);
             }
             //sell entrust
+            let resTradeFees = Utils.checkDecimal(Utils.mymul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
             let resEntrustRes = await cnt.execQuery(sql,
                 [tradeVolume, tradeVolume, tradeAmount, resAvgPrice, resTradeFees, resEntrustStatus, resEntrustStatusName, resItem.entrust_id, tradeVolume])
 
-            // let resTradeFees = Utils.checkDecimal(Utils.mymul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
-            // let resEntrustRes = await cnt.edit('m_entrust', {
-            //     completed_volume: Utils.add(resItem.completed_volume, tradeVolume),
-            //     no_completed_volume: Utils.sub(resItem.no_completed_volume, tradeVolume),
-            //     completed_total_amount: Utils.add(resItem.completed_total_amount, tradeAmount),
-            //     average_price: resAvgPrice,
-            //     trade_fees: Utils.add(resItem.trade_fees, resTradeFees),
-            //     entrust_status: resEntrustStatus,
-            //     entrust_status_name: resEntrustStatusName
-            // }, {entrust_id: resItem.entrust_id});
             if (resEntrustRes.affectedRows) {
                 console.log("修改卖单" + resItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + resEntrustStatusName);
             }
@@ -435,7 +418,7 @@ class EntrustModel {
             let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
                                                     where user_id = ? and coin_id = ?`, [reqBuyCoin, reqBuyCoin, reqItem.user_id, coinEx.coin_id]);
             if (reqUpdCoinAssets.affectedRows) {
-                console.log("更新买家用户资产 " + reqItem.entrust_id + "  币  " + coinEx.coin_id + " 余额增加" + reqBuyCoin);
+                console.log("更新买家用户资产: entrust_id" + reqItem.entrust_id + "  币  " + coinEx.coin_id + " 余额增加" + reqBuyCoin);
             }
             // - 冻结数量
             let reqAvailableCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(reqItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
@@ -443,7 +426,7 @@ class EntrustModel {
             let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
                                                             where user_id = ? and coin_id = ? and frozen >? `, [reqAvailableCoin, reqFrozenCoin, tradeAmount, reqItem.user_id, coinEx.exchange_coin_id, reqFrozenCoin]);
             if (reqUpdExchangeCoinAssets.affectedRows) {
-                console.log("更新买家用户资产 " + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 可用增加 " + reqAvailableCoin + " 冻结减少 " + reqFrozenCoin + " 余额减少 " + tradeAmount);
+                console.log("更新买家用户资产: entrust_id " + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 可用增加 " + reqAvailableCoin + " 冻结减少 " + reqFrozenCoin + " 余额减少 " + tradeAmount);
             }
             //卖单用户
             //- 冻结数量

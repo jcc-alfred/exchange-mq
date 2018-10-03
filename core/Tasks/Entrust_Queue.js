@@ -62,11 +62,9 @@ function sortASC(item1, item2) {
 async function getSellEntrustList(coinExchangeId, refresh = true) {
     let sellList = [];
     if (refresh) {
-        console.log("refresh");
         let arr = await EntrustModel.getSellEntrustListByCEId(coinExchangeId, refresh);
         sellList = arr.sort(sortASC);
     } else {
-        console.log("else refresh");
         let arr = await EntrustModel.getSellEntrustListByCEId(coinExchangeId);
         sellList = arr.sort(sortASC);
     }
@@ -76,11 +74,9 @@ async function getSellEntrustList(coinExchangeId, refresh = true) {
 async function getBuyEntrustList(coinExchangeId, refresh = true) {
     let buyList = [];
     if (refresh) {
-        console.log("refresh");
         let arr = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId, refresh);
         buyList = arr.sort(sortDESC);
     } else {
-        console.log("else refresh");
         let arr = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId);
         buyList = arr.sort(sortDESC);
     }
