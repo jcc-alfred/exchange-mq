@@ -300,26 +300,26 @@ class EntrustModel {
 
     }
 
-    async updatEntrustCache(entrust_id) {
+    async updatEntrustCache(entrust) {
         let cache = await Cache.init(config.cacheDB.order);
         let cnt = await DB.cluster('slave');
         try {
             let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
-            let params = await cnt.execQuery(sql, entrust_id);
-            params = params[0]
-            let ckey = (params.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + params.coin_exchange_id;
-            if (await cache.exists(ckey) && await cache.hexists(ckey, entrust_id)) {
-                await cache.hdel(ckey, entrust_id);
+            let params = await cnt.execQuery(sql, entrust.entrust_id);
+            let ckey = (entrust.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrust.coin_exchange_id;
+            if (await cache.exists(ckey) && await cache.hexists(ckey, entrust.entrust_id)) {
+                await cache.hdel(ckey, entrust.entrust_id);
             }
             //entrust_ceid_userid
-            let uckey = config.cacheKey.Entrust_UserId + params.user_id;
-            if (await cache.exists(uckey) && await cache.hexists(uckey, entrust_id)) {
-                await cache.hdel(uckey, entrust_id);
+            let uckey = config.cacheKey.Entrust_UserId + entrust.user_id;
+            if (await cache.exists(uckey) && await cache.hexists(uckey, entrust.entrust_id)) {
+                await cache.hdel(uckey, entrust.entrust_id);
             }
-            if (params) {
-                await cache.hset(ckey, params.entrust_id, params);
-                await cache.hset(uckey, entrust_id, params);
-                return params;
+
+            if (params.length > 0) {
+                await cache.hset(ckey, entrust.entrust_id, params[0]);
+                await cache.hset(uckey, entrust.entrust_id, params[0]);
+                return params[0];
             } else {
                 return false;
             }

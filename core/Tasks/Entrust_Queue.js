@@ -24,7 +24,7 @@ let socket = io(config.socketDomain);
                 try {
                     let params = JSON.parse(msg.content.toString());
                     console.log("<--" + params.entrust_id + ' ' + new Date());
-                    let res = await EntrustModel.updatEntrustCache(params.entrust_id);
+                    let res = await EntrustModel.updatEntrustCache(params);
                     if (!res) {
                         console.log("entrust already finished" + params.entrust_id);
                         ch.ack(msg);
@@ -85,7 +85,7 @@ async function getBuyEntrustList(coinExchangeId, refresh = true) {
 
 
 async function matchOrder(entrust) {
-    let entrustItem = await EntrustModel.updatEntrustCache(entrust.entrust_id);
+    let entrustItem = await EntrustModel.updatEntrustCache(entrust);
     if (!entrustItem) {
         return true
     }
