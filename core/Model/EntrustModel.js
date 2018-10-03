@@ -574,7 +574,7 @@ class EntrustModel {
             status = 1
         } catch (error) {
             console.error(error);
-            console("trade volume" + tradeVolume);
+            console.log("trade volume" + tradeVolume);
             cnt.rollback();
             throw error;
         } finally {
