@@ -17,7 +17,7 @@ let socket = io(config.socketDomain);
         let ch = await conn.createChannel();
         let coinExList = await CoinModel.getCoinExchangeList();
         coinExList.forEach(async (item) => {
-            ch.prefetch(1);
+            ch.prefetch(10);
             //消费队列
             ch.assertQueue(config.MQKey.Entrust_Queue + item.coin_exchange_id, {durable: true});
             ch.consume(config.MQKey.Entrust_Queue + item.coin_exchange_id, async (msg) => {
