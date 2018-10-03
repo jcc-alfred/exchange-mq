@@ -398,7 +398,7 @@ class EntrustModel {
                         trade_fees = trade_fees + ?,
                         entrust_status = ?,
                         entrust_status_name = ?
-                        where entrust_id =? and no_completed_volume >? and entrust_status in (1,0)`;
+                        where entrust_id =? and no_completed_volume >=? and entrust_status in (1,0)`;
             let reqEntrustRes = await cnt.execQuery(sql,
                 [tradeVolume, tradeVolume, tradeAmount, reqAvgPrice, reqTradeFees, reqEntrustStatus, reqEntrustStatusName, reqItem.entrust_id, tradeVolume])
             if (reqEntrustRes.affectedRows) {
