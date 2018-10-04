@@ -321,6 +321,7 @@ class EntrustModel {
                 await cache.hset(uckey, entrust.entrust_id, params[0]);
                 return params[0];
             } else {
+                console.log("entrust not in status 0 and 1 " + entrust.entrust_id);
                 return false;
             }
         } catch (e) {
@@ -402,7 +403,9 @@ class EntrustModel {
             let reqEntrustRes = await cnt.execQuery(sql,
                 [tradeVolume, tradeVolume, tradeAmount, reqAvgPrice, reqTradeFees, reqEntrustStatus, reqEntrustStatusName, reqItem.entrust_id, tradeVolume])
             if (reqEntrustRes.affectedRows) {
-                console.log("修改买单" + reqItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + reqEntrustStatus);
+                console.log("修改买单成功" + reqItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + reqEntrustStatus);
+            } else {
+                console.error("修改买单失败" + reqItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + reqEntrustStatus);
             }
             //sell entrust
             let resTradeFees = Utils.checkDecimal(Utils.mymul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
@@ -410,7 +413,9 @@ class EntrustModel {
                 [tradeVolume, tradeVolume, tradeAmount, resAvgPrice, resTradeFees, resEntrustStatus, resEntrustStatusName, resItem.entrust_id, tradeVolume])
 
             if (resEntrustRes.affectedRows) {
-                console.log("修改卖单" + resItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + resEntrustStatusName);
+                console.log("修改卖单成功" + resItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + resEntrustStatusName);
+            } else {
+                console.error("修改卖单失败" + resItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + resEntrustStatusName)
             }
             //买单用户
             // + 购买数量
@@ -446,7 +451,7 @@ class EntrustModel {
             let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id, true);
             let resCoinAssetsList = await AssetsModel.getUserAssetsByUserId(resItem.user_id, true);
             if (reqCoinAssetsList && resCoinAssetsList) {
-                console.log("更新用户资产缓存成功");
+                console.log("更新用户资产缓存成功 buy" + reqItem.entrust_id + " sell " + resItem.entrust_id);
             }
             //买单用户资产变更日志
             let reqCoinAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
@@ -460,7 +465,7 @@ class EntrustModel {
             let resSellCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, resBuyCoin, resCoinExchangeAssets.balance, 1, 3, '买入');
             //成交记录
             if (resBuyCoin && resSellCoinLog && reqCoinAssets && reqSellCoinLog) {
-                console.log("增加买卖用户资产变更日志成功");
+                console.log("增加买卖用户资产变更日志成功 buy" + reqItem.entrust_id + " sell " + resItem.entrust_id);
             }
             let orderParams = {
                 serial_num: reqItem.serial_num,
@@ -480,12 +485,13 @@ class EntrustModel {
             let orderRes = await cnt.edit('m_order', orderParams);
             if (orderRes.affectedRows) {
                 await this.addOrder({...orderParams, order_id: orderRes.insertId, create_time: Date.now()});
-                console.log("增加新的order记录" + orderParams);
+                console.log("增加新的order记录" + orderParams.order_id + "buy" + reqItem.entrust_id + " sell " + resItem.entrust_id);
             }
             if (reqEntrustRes.affectedRows && resEntrustRes.affectedRows &&
                 reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
                 resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
                 cnt.commit();
+
                 let req = {
                     entrust_id: reqItem.entrust_id,
                     coin_exchange_id: reqItem.coin_exchange_id,
@@ -568,7 +574,7 @@ class EntrustModel {
                 }
             } else {
                 cnt.rollback();
-                console.log("rollback");
+                console.log("rollback, buy " + reqItem.entrust_id + " sell " + resItem.entrust_id);
                 return false;
             }
             status = 1

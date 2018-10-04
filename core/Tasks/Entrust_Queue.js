@@ -24,12 +24,6 @@ let socket = io(config.socketDomain);
                 try {
                     let params = JSON.parse(msg.content.toString());
                     console.log("<--" + params.entrust_id + ' ' + new Date());
-                    let res = await EntrustModel.updatEntrustCache(params);
-                    if (!res) {
-                        console.log("entrust already finished" + params.entrust_id);
-                        ch.ack(msg);
-                        return
-                    }
                     socket.emit('entrustList', {coin_exchange_id: item.coin_exchange_id});
                     socket.emit('userEntrustList', {user_id: params.user_id, coin_exchange_id: item.coin_exchange_id});
                     let result = await matchOrder(params);
@@ -99,7 +93,7 @@ async function matchOrder(entrust) {
                 if (nextOrder) {
                     await matchOrder(nextOrder);
                 } else {
-                    await matchOrder(entrust)
+                    await matchOrder(entrust);
                 }
             }
         }
@@ -113,7 +107,7 @@ async function matchOrder(entrust) {
                 if (nextOrder) {
                     await matchOrder(nextOrder);
                 } else {
-                    await matchOrder(entrust)
+                    await matchOrder(entrust);
                 }
             }
         }
