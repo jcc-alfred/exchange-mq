@@ -96,7 +96,7 @@ async function matchOrder(entrust) {
             //价格匹配
             if (entrustItem.entrust_price >= sellItem.entrust_price) {
                 let nextOrder = await EntrustModel.processOrder(entrustItem, sellItem);
-                if (nextOrder) {
+                if (nextOrder && nextOrder.entrust_id == entrust.entrust_id) {
                     await matchOrder(nextOrder);
                 }
             }
@@ -108,7 +108,7 @@ async function matchOrder(entrust) {
             //价格匹配
             if (buyItem.entrust_price >= entrustItem.entrust_price) {
                 let nextOrder = await EntrustModel.processOrder(buyItem, entrustItem);
-                if (nextOrder) {
+                if (nextOrder && nextOrder.entrust_id == entrust.entrust_id) {
                     await matchOrder(nextOrder);
                 }
             }
