@@ -98,6 +98,8 @@ async function matchOrder(entrust) {
                 let nextOrder = await EntrustModel.processOrder(entrustItem, sellItem);
                 if (nextOrder && nextOrder.entrust_id == entrust.entrust_id) {
                     await matchOrder(nextOrder);
+                } else {
+                    await matchOrder(entrust)
                 }
             }
         }
@@ -110,6 +112,8 @@ async function matchOrder(entrust) {
                 let nextOrder = await EntrustModel.processOrder(buyItem, entrustItem);
                 if (nextOrder && nextOrder.entrust_id == entrust.entrust_id) {
                     await matchOrder(nextOrder);
+                } else {
+                    await matchOrder(entrust)
                 }
             }
         }
