@@ -302,7 +302,7 @@ class EntrustModel {
 
     async updatEntrustCache(entrust) {
         let cache = await Cache.init(config.cacheDB.order);
-        let cnt = await DB.cluster('slave');
+        let cnt = await DB.cluster('master');
         try {
             let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
             let params = await cnt.execQuery(sql, entrust.entrust_id);
