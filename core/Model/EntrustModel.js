@@ -304,8 +304,14 @@ class EntrustModel {
         let cache = await Cache.init(config.cacheDB.order);
         let cnt = await DB.cluster('master');
         try {
+            let sql1 = `select * from m_entrust where entrust_id = ?`;
+            let res = await cnt.execQuery(sql1, entrust.entrust_id);
+
+
             let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
             let params = await cnt.execQuery(sql, entrust.entrust_id);
+
+
             console.log("get entrust" + entrust.entrust_id + " " + JSON.stringify(params));
             let ckey = (entrust.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrust.coin_exchange_id;
             if (await cache.exists(ckey) && await cache.hexists(ckey, entrust.entrust_id)) {
@@ -322,6 +328,9 @@ class EntrustModel {
                 await cache.hset(uckey, entrust.entrust_id, params[0]);
                 return params[0];
             } else {
+                if (res.length < 1) {
+                    console.log("cannot find entrust " + entrust.entrust_id);
+                }
                 console.log("entrust not in status 0 and 1 " + entrust.entrust_id);
                 return false;
             }
