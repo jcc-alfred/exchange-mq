@@ -27,6 +27,12 @@ let socket = io(config.socketDomain);
                     socket.emit('entrustList', {coin_exchange_id: item.coin_exchange_id});
                     socket.emit('userEntrustList', {user_id: params.user_id, coin_exchange_id: item.coin_exchange_id});
                     let result = await matchOrder(params);
+                    if (!result) {
+                        console.log("send back to mq " + params.entrust_id);
+                        ch.nack(msg);
+                        return
+                        // throw new Error("send back to mq "+params.entrust_id);
+                    }
                     ch.ack(msg);
                     console.log("-->" + params.entrust_id + ' ' + new Date());
                 } catch (error) {
@@ -79,39 +85,52 @@ async function getBuyEntrustList(coinExchangeId, refresh = true) {
 
 
 async function matchOrder(entrust) {
-    let entrustItem = await EntrustModel.updatEntrustCache(entrust);
-    if (!entrustItem) {
-        return true
-    }
-    if (entrustItem.entrust_type_id == 1) {
-        let sellList = await getSellEntrustList(entrustItem.coin_exchange_id);
-        if (sellList.length > 0) {
-            let sellItem = sellList[0];
-            //价格匹配
-            if (entrustItem.entrust_price >= sellItem.entrust_price) {
-                let nextOrder = await EntrustModel.processOrder(entrustItem, sellItem);
-                if (nextOrder) {
-                    await matchOrder(nextOrder);
-                } else {
-                    await matchOrder(entrust);
+    try {
+        let result = await EntrustModel.updatEntrustCache(entrust);
+        if (result.status == 0) {
+            console.log("DB cannot find the entrust " + entrust.entrust_id);
+            //数据库找不到这条entrust，先放回MQ
+            return false
+        } else if (result.status == 1) {
+            //数据库记录 状态为不可交易，！=0，1
+            console.log("Entrust " + entrust.entrust_id + " already finished");
+            return true
+        }
+        let entrustItem = result.data;
+        if (entrustItem.entrust_type_id == 1) {
+            let sellList = await getSellEntrustList(entrustItem.coin_exchange_id);
+            if (sellList.length > 0) {
+                let sellItem = sellList[0];
+                //价格匹配
+                if (entrustItem.entrust_price >= sellItem.entrust_price) {
+                    let nextOrder = await EntrustModel.processOrder(entrustItem, sellItem);
+                    if (nextOrder) {
+                        await matchOrder(nextOrder);
+                    } else {
+                        await matchOrder(entrust);
+                    }
+                }
+            }
+        } else {
+            let buyList = await getBuyEntrustList(entrustItem.coin_exchange_id);
+            if (buyList.length > 0) {
+                let buyItem = buyList[0];
+                //价格匹配
+                if (buyItem.entrust_price >= entrustItem.entrust_price) {
+                    let nextOrder = await EntrustModel.processOrder(buyItem, entrustItem);
+                    if (nextOrder) {
+                        await matchOrder(nextOrder);
+                    } else {
+                        await matchOrder(entrust);
+                    }
                 }
             }
         }
-    } else {
-        let buyList = await getBuyEntrustList(entrustItem.coin_exchange_id);
-        if (buyList.length > 0) {
-            let buyItem = buyList[0];
-            //价格匹配
-            if (buyItem.entrust_price >= entrustItem.entrust_price) {
-                let nextOrder = await EntrustModel.processOrder(buyItem, entrustItem);
-                if (nextOrder) {
-                    await matchOrder(nextOrder);
-                } else {
-                    await matchOrder(entrust);
-                }
-            }
-        }
+        return true;
+    } catch (e) {
+        throw e;
     }
-    return true;
+    
+
 }
 

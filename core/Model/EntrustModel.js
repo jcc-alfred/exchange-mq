@@ -310,8 +310,7 @@ class EntrustModel {
             let sql1 = `select * from m_entrust where entrust_id = ?`;
             let result = await cnt.execQuery(sql1, entrust.entrust_id);
             if (result.length < 1) {
-                throw ("DB cannot find the entrust " + entrust.entrust_id);
-                // return {status:0,data:{}}
+                return {status: 0, data: {}}
             } else {
                 let params = result.find(item => item.entrust_status == 0 || item.entrust_status == 1);
                 let ckey = (entrust.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrust.coin_exchange_id;
@@ -326,10 +325,10 @@ class EntrustModel {
                 if (params) {
                     await cache.hset(ckey, entrust.entrust_id, params);
                     await cache.hset(uckey, entrust.entrust_id, params);
-                    return params
+                    return {status: 2, data: params}
                 } else {
                     console.log("entrust " + entrust.entrust_id + " already finished");
-                    return false
+                    return {status: 1, data: {}}
                 }
             }
         } catch (e) {
