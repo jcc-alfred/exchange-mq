@@ -301,38 +301,36 @@ class EntrustModel {
     }
 
     async updatEntrustCache(entrust) {
+        // res =0   entrust在数据库不存在，有可能是幻读
+        // res= 1   entrust在数据库中存在，但状态不是，部分完成，未完成
+        // res=2    entrust存在，数据库状态为可以交易，并且已经更新缓存
         let cache = await Cache.init(config.cacheDB.order);
         let cnt = await DB.cluster('master');
         try {
             let sql1 = `select * from m_entrust where entrust_id = ?`;
-            let res = await cnt.execQuery(sql1, entrust.entrust_id);
-
-
-            let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
-            let params = await cnt.execQuery(sql, entrust.entrust_id);
-
-
-            console.log("get entrust" + entrust.entrust_id + " " + JSON.stringify(params));
-            let ckey = (entrust.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrust.coin_exchange_id;
-            if (await cache.exists(ckey) && await cache.hexists(ckey, entrust.entrust_id)) {
-                await cache.hdel(ckey, entrust.entrust_id);
-            }
-            //entrust_ceid_userid
-            let uckey = config.cacheKey.Entrust_UserId + entrust.user_id;
-            if (await cache.exists(uckey) && await cache.hexists(uckey, entrust.entrust_id)) {
-                await cache.hdel(uckey, entrust.entrust_id);
-            }
-
-            if (params.length > 0) {
-                await cache.hset(ckey, entrust.entrust_id, params[0]);
-                await cache.hset(uckey, entrust.entrust_id, params[0]);
-                return params[0];
+            let result = await cnt.execQuery(sql1, entrust.entrust_id);
+            if (result.length < 1) {
+                throw ("DB cannot find the entrust " + entrust.entrust_id);
+                // return {status:0,data:{}}
             } else {
-                if (res.length < 1) {
-                    console.log("cannot find entrust " + entrust.entrust_id);
+                params = result.find(item => item.entrust_status == 0 || item.entrust_status == 1);
+                let ckey = (entrust.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrust.coin_exchange_id;
+                if (await cache.exists(ckey) && await cache.hexists(ckey, entrust.entrust_id)) {
+                    await cache.hdel(ckey, entrust.entrust_id);
                 }
-                console.log("entrust not in status 0 and 1 " + entrust.entrust_id);
-                return false;
+                //entrust_ceid_userid
+                let uckey = config.cacheKey.Entrust_UserId + entrust.user_id;
+                if (await cache.exists(uckey) && await cache.hexists(uckey, entrust.entrust_id)) {
+                    await cache.hdel(uckey, entrust.entrust_id);
+                }
+                if (params) {
+                    await cache.hset(ckey, entrust.entrust_id, params);
+                    await cache.hset(uckey, entrust.entrust_id, params);
+                    return params
+                } else {
+                    console.log("entrust " + entrust.entrust_id + " already finished");
+                    return false
+                }
             }
         } catch (e) {
             console.log(e);
