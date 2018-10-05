@@ -313,7 +313,7 @@ class EntrustModel {
                 throw ("DB cannot find the entrust " + entrust.entrust_id);
                 // return {status:0,data:{}}
             } else {
-                params = result.find(item => item.entrust_status == 0 || item.entrust_status == 1);
+                let params = result.find(item => item.entrust_status == 0 || item.entrust_status == 1);
                 let ckey = (entrust.entrust_type_id == 1 ? config.cacheKey.Buy_Entrust : config.cacheKey.Sell_Entrust) + entrust.coin_exchange_id;
                 if (await cache.exists(ckey) && await cache.hexists(ckey, entrust.entrust_id)) {
                     await cache.hdel(ckey, entrust.entrust_id);
