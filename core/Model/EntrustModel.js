@@ -387,7 +387,7 @@ class EntrustModel {
         }
         let coinExchangeList = await CoinModel.getCoinExchangeList();
         let coinEx = coinExchangeList.find(item => item.coin_exchange_id == reqItem.coin_exchange_id);
-        let tradeAmount = Utils.checkDecimal(Utils.mymul(tradeVolume, tradePrice), coinEx.exchange_decimal_digits);
+        let tradeAmount = Utils.checkDecimal(Utils.mul(tradeVolume, tradePrice), coinEx.exchange_decimal_digits);
         let reqTotalAmount = Utils.checkDecimal(Utils.add(reqItem.completed_total_amount, tradeAmount), coinEx.exchange_decimal_digits);
         let reqAvgPrice = Utils.checkDecimal(Utils.div(reqTotalAmount, Utils.add(reqItem.completed_volume, tradeVolume)), coinEx.exchange_decimal_digits);
         let resTotalAmount = Utils.checkDecimal(Utils.add(resItem.completed_total_amount, tradeAmount), coinEx.exchange_decimal_digits);
@@ -399,7 +399,7 @@ class EntrustModel {
             cnt.transaction();
             console.log("start transaction");
             //buy entrust
-            let reqTradeFees = Utils.checkDecimal(Utils.mymul(tradeVolume, reqItem.trade_fees_rate), coinEx.decimal_digits);
+            let reqTradeFees = Utils.checkDecimal(Utils.mul(tradeVolume, reqItem.trade_fees_rate), coinEx.decimal_digits);
             let sql = `update m_entrust set completed_volume = completed_volume + ?, 
                         no_completed_volume =no_completed_volume - ?,
                         completed_total_amount = completed_total_amount + ?,
@@ -416,7 +416,7 @@ class EntrustModel {
                 console.error("修改买单失败" + reqItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + reqEntrustStatus);
             }
             //sell entrust
-            let resTradeFees = Utils.checkDecimal(Utils.mymul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
+            let resTradeFees = Utils.checkDecimal(Utils.mul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
             let resEntrustRes = await cnt.execQuery(sql,
                 [tradeVolume, tradeVolume, tradeAmount, resAvgPrice, resTradeFees, resEntrustStatus, resEntrustStatusName, resItem.entrust_id, tradeVolume])
 
@@ -427,7 +427,7 @@ class EntrustModel {
             }
             //买单用户
             // + 购买数量
-            let reqBuyCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(1, reqItem.trade_fees_rate)), coinEx.decimal_digits);
+            let reqBuyCoin = Utils.checkDecimal(Utils.mul(tradeVolume, Utils.sub(1, reqItem.trade_fees_rate)), coinEx.decimal_digits);
             let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
                                                     where user_id = ? and coin_id = ?`, [reqBuyCoin, reqBuyCoin, reqItem.user_id, coinEx.coin_id]);
             if (reqUpdCoinAssets.affectedRows) {
@@ -436,8 +436,8 @@ class EntrustModel {
                 console.log("更新买家用户资产失败: user-" + reqItem.user_id + " entrustID-" + reqItem.entrust_id + "  币  " + coinEx.coin_id + " 余额增加" + reqBuyCoin);
             }
             // - 冻结数量
-            let reqAvailableCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(reqItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
-            let reqFrozenCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, reqItem.entrust_price), coinEx.exchange_decimal_digits);
+            let reqAvailableCoin = Utils.checkDecimal(Utils.mul(tradeVolume, Utils.sub(reqItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
+            let reqFrozenCoin = Utils.checkDecimal(Utils.mul(tradeVolume, reqItem.entrust_price), coinEx.exchange_decimal_digits);
             let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
                                                             where user_id = ? and coin_id = ? and frozen >=? `, [reqAvailableCoin, reqFrozenCoin, tradeAmount, reqItem.user_id, coinEx.exchange_coin_id, reqFrozenCoin]);
             if (reqUpdExchangeCoinAssets.affectedRows) {
@@ -447,7 +447,7 @@ class EntrustModel {
             }
             //卖单用户
             //- 冻结数量
-            let resBuyCoin = Utils.checkDecimal(Utils.mymul(tradeAmount, Utils.sub(1, resItem.trade_fees_rate)), coinEx.exchange_decimal_digits);
+            let resBuyCoin = Utils.checkDecimal(Utils.mul(tradeAmount, Utils.sub(1, resItem.trade_fees_rate)), coinEx.exchange_decimal_digits);
             let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
                                                     where user_id = ? and coin_id = ? and frozen >=? `, [tradeVolume, tradeVolume, resItem.user_id, coinEx.coin_id, tradeVolume]);
             if (resUpdCoinAssets.affectedRows) {
