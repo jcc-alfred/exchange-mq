@@ -431,7 +431,9 @@ class EntrustModel {
             let reqUpdCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
                                                     where user_id = ? and coin_id = ?`, [reqBuyCoin, reqBuyCoin, reqItem.user_id, coinEx.coin_id]);
             if (reqUpdCoinAssets.affectedRows) {
-                console.log("更新买家用户资产: entrust_id" + reqItem.entrust_id + "  币  " + coinEx.coin_id + " 余额增加" + reqBuyCoin);
+                console.log("更新买家用户资产成功: user-" + reqItem.user_id + " entrustID-" + reqItem.entrust_id + "  币  " + coinEx.coin_id + " 余额增加" + reqBuyCoin);
+            } else {
+                console.log("更新买家用户资产失败: user-" + reqItem.user_id + " entrustID-" + reqItem.entrust_id + "  币  " + coinEx.coin_id + " 余额增加" + reqBuyCoin);
             }
             // - 冻结数量
             let reqAvailableCoin = Utils.checkDecimal(Utils.mymul(tradeVolume, Utils.sub(reqItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
@@ -439,7 +441,9 @@ class EntrustModel {
             let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
                                                             where user_id = ? and coin_id = ? and frozen >? `, [reqAvailableCoin, reqFrozenCoin, tradeAmount, reqItem.user_id, coinEx.exchange_coin_id, reqFrozenCoin]);
             if (reqUpdExchangeCoinAssets.affectedRows) {
-                console.log("更新买家用户资产: entrust_id " + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 可用增加 " + reqAvailableCoin + " 冻结减少 " + reqFrozenCoin + " 余额减少 " + tradeAmount);
+                console.log("更新买家用户资产成功 user-" + reqItem.user_id + " entrustID-" + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 可用增加 " + reqAvailableCoin + " 冻结减少 " + reqFrozenCoin + " 余额减少 " + tradeAmount);
+            } else {
+                console.log("更新买家用户资产失败: user-" + reqItem.user_id + " entrustID-" + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 可用增加 " + reqAvailableCoin + " 冻结减少 " + reqFrozenCoin + " 余额减少 " + tradeAmount);
             }
             //卖单用户
             //- 冻结数量
@@ -447,13 +451,17 @@ class EntrustModel {
             let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
                                                     where user_id = ? and coin_id = ? and frozen >? `, [tradeVolume, tradeVolume, resItem.user_id, coinEx.coin_id, tradeVolume]);
             if (resUpdCoinAssets.affectedRows) {
-                console.log("更新卖家用户资产 " + resItem.entrust_id + "  币  " + coinEx.coin_id + " 余额减少" + tradeVolume + "冻结减少" + tradeVolume);
+                console.log("更新卖家用户资产成功 user-" + resItem.user_id + " entrustID-" + resItem.entrust_id + "  币  " + coinEx.coin_id + " 余额减少" + tradeVolume + "冻结减少" + tradeVolume);
+            } else {
+                console.log("更新卖家用户资产失败 user-" + resItem.user_id + " entrustID-" + resItem.entrust_id + "  币  " + coinEx.coin_id + " 余额减少" + tradeVolume + "冻结减少" + tradeVolume);
             }
             // + 卖出金额
             let resUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , balance = balance + ?
                                                             where user_id = ? and coin_id = ?`, [resBuyCoin, resBuyCoin, resItem.user_id, coinEx.exchange_coin_id]);
             if (resUpdExchangeCoinAssets.affectedRows) {
-                console.log("更新卖家用户资产 " + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 余额增加" + reqBuyCoin);
+                console.log("更新卖家用户资产成功 user-" + resItem.user_id + " entrustID-" + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 余额增加" + reqBuyCoin);
+            } else {
+                console.log("更新卖家用户资失败 user-" + resItem.user_id + " entrustID-" + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 余额增加" + reqBuyCoin);
             }
             //更新用户资产缓存
             let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id, true);
