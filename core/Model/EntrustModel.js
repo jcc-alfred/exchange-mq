@@ -439,7 +439,7 @@ class EntrustModel {
             let reqAvailableCoin = Utils.checkDecimal(Utils.mul(tradeVolume, Utils.sub(reqItem.entrust_price, tradePrice)), coinEx.exchange_decimal_digits);
             let reqFrozenCoin = Utils.checkDecimal(Utils.mul(tradeVolume, reqItem.entrust_price), coinEx.exchange_decimal_digits);
             let reqUpdExchangeCoinAssets = await cnt.execQuery(`update m_user_assets set available = available + ? , frozen = frozen - ? , balance = balance - ?
-                                                            where user_id = ? and coin_id = ? and frozen >=? `, [reqAvailableCoin, reqFrozenCoin, tradeAmount, reqItem.user_id, coinEx.exchange_coin_id, reqFrozenCoin]);
+                                                            where user_id = ? and coin_id = ? `, [reqAvailableCoin, reqFrozenCoin, tradeAmount, reqItem.user_id, coinEx.exchange_coin_id]);
             if (reqUpdExchangeCoinAssets.affectedRows) {
                 console.log("更新买家用户资产成功 user-" + reqItem.user_id + " entrustID-" + resItem.entrust_id + "  币  " + coinEx.exchange_coin_id + " 可用增加 " + reqAvailableCoin + " 冻结减少 " + reqFrozenCoin + " 余额减少 " + tradeAmount);
             } else {
@@ -449,7 +449,7 @@ class EntrustModel {
             //- 冻结数量
             let resBuyCoin = Utils.checkDecimal(Utils.mul(tradeAmount, Utils.sub(1, resItem.trade_fees_rate)), coinEx.exchange_decimal_digits);
             let resUpdCoinAssets = await cnt.execQuery(`update m_user_assets set frozen = frozen - ? , balance = balance - ?
-                                                    where user_id = ? and coin_id = ? and frozen >=? `, [tradeVolume, tradeVolume, resItem.user_id, coinEx.coin_id, tradeVolume]);
+                                                    where user_id = ? and coin_id = ? `, [tradeVolume, tradeVolume, resItem.user_id, coinEx.coin_id]);
             if (resUpdCoinAssets.affectedRows) {
                 console.log("更新卖家用户资产成功 user-" + resItem.user_id + " entrustID-" + resItem.entrust_id + "  币  " + coinEx.coin_id + " 余额减少" + tradeVolume + "冻结减少" + tradeVolume);
             } else {
