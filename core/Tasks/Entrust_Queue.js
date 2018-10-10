@@ -17,7 +17,7 @@ let socket = io(config.socketDomain);
         let ch = await conn.createChannel();
         let coinExList = await CoinModel.getCoinExchangeList();
         coinExList.forEach(async (item) => {
-            ch.prefetch(10);
+            ch.prefetch(1);
             //消费队列
             ch.assertQueue(config.MQKey.Entrust_Queue + item.coin_exchange_id, {durable: true});
             ch.consume(config.MQKey.Entrust_Queue + item.coin_exchange_id, async (msg) => {
@@ -89,7 +89,6 @@ async function matchOrder(entrust) {
         if (!entrust.entrust_id) {
             return true
         }
-        ;
         let result = await EntrustModel.updatEntrustCache(entrust);
         if (result.status == 0) {
             console.log("DB cannot find the entrust " + entrust.entrust_id);
