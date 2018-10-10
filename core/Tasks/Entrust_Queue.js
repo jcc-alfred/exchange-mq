@@ -86,6 +86,10 @@ async function getBuyEntrustList(coinExchangeId, refresh = true) {
 
 async function matchOrder(entrust) {
     try {
+        if (!entrust.entrust_id) {
+            return true
+        }
+        ;
         let result = await EntrustModel.updatEntrustCache(entrust);
         if (result.status == 0) {
             console.log("DB cannot find the entrust " + entrust.entrust_id);
