@@ -134,6 +134,7 @@ class CoinModel{
                             a.change_range_low_rate,
                             a.order_by_num,
                             a.update_time,
+                            a.base_amount,
                             a.create_time,
                             a.record_status
                             FROM m_coin_exchange as a 
