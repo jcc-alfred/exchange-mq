@@ -62,11 +62,13 @@ function sortASC(item1, item2) {
 async function getSellEntrustList(coinExchangeId, refresh = true) {
     let sellList = [];
     if (refresh) {
-        let arr = await EntrustModel.getSellEntrustListByCEId(coinExchangeId, refresh);
-        sellList = arr.sort(sortASC);
+        sellList = await EntrustModel.getSellEntrustListByCEId(coinExchangeId, refresh);
+        // console.log(arr.map(a=>a.entrust_price));
+        // sellList = arr.sort(sortASC);
+        // console.log(sellList.map(a=>a.entrust_price));
     } else {
-        let arr = await EntrustModel.getSellEntrustListByCEId(coinExchangeId);
-        sellList = arr.sort(sortASC);
+        sellList = await EntrustModel.getSellEntrustListByCEId(coinExchangeId);
+        // sellList = arr.sort(sortASC);
     }
     return sellList;
 }
@@ -74,11 +76,11 @@ async function getSellEntrustList(coinExchangeId, refresh = true) {
 async function getBuyEntrustList(coinExchangeId, refresh = true) {
     let buyList = [];
     if (refresh) {
-        let arr = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId, refresh);
-        buyList = arr.sort(sortDESC);
+        buyList = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId, refresh);
+        // buyList = arr.sort(sortDESC);
     } else {
-        let arr = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId);
-        buyList = arr.sort(sortDESC);
+        buyList = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId);
+        // buyList = arr.sort(sortDESC);
     }
     return buyList;
 }

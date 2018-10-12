@@ -111,7 +111,7 @@ class EntrustModel {
                 }
             }
             let cnt = await DB.cluster('slave');
-            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 1 and (entrust_status = 0 or entrust_status = 1) ORDER BY entrust_price DESC, entrust_id ASC LIMIT 20`;
+            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 1 and entrust_status in (0,1) ORDER BY entrust_price DESC, entrust_id ASC LIMIT 5`;
             let res = await cnt.execQuery(sql, coinExchangeId);
             cnt.close();
 
@@ -148,7 +148,7 @@ class EntrustModel {
             }
 
             let cnt = await DB.cluster('slave');
-            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 0 and (entrust_status = 0 or entrust_status = 1) ORDER BY entrust_price ASC, entrust_id ASC LIMIT 20`;
+            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 0 and entrust_status in (0,1) ORDER BY entrust_price ASC, entrust_id ASC LIMIT 5`;
             let res = await cnt.execQuery(sql, coinExchangeId);
             cnt.close();
 
@@ -362,10 +362,10 @@ class EntrustModel {
             NextOrder = false;
         }
 
-        if (reqItem.entrust_price >= resItem.entrust_price) {
+        if (trigger_type_id == 1) {
             tradePrice = resItem.entrust_price;
         } else {
-            return false
+            tradePrice = reqItem.entrust_price;
         }
         let coinExchangeList = await CoinModel.getCoinExchangeList();
         let coinEx = coinExchangeList.find(item => item.coin_exchange_id == reqItem.coin_exchange_id);
@@ -463,7 +463,7 @@ class EntrustModel {
             let resSellCoinLog = await AssetsLogModel.addUserAssetsLog(resItem.serial_num, resItem.user_id, coinEx.exchange_coin_id, coinEx.exchange_coin_unit, resBuyCoin, resCoinExchangeAssets.balance, 1, 3, '买入');
             //成交记录
             if (resBuyCoin && resSellCoinLog && reqCoinAssets && reqSellCoinLog) {
-                console.log("增加买卖用户资产变更日志成功 buy" + reqItem.entrust_id + " sell " + resItem.entrust_id);
+                console.log("增加买卖用户资产变更日志成功 buy " + reqItem.entrust_id + " sell " + resItem.entrust_id);
             }
             let orderParams = {
                 serial_num: reqItem.serial_num,
