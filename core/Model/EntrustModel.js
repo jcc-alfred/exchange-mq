@@ -170,18 +170,22 @@ class EntrustModel {
 
     async deleteEntrust(ckey, field) {
         let cache = await Cache.init(config.cacheDB.order);
-        if (await cache.exists(ckey) && await cache.hexists(ckey, field)) {
-            await cache.hdel(ckey, field);
+        try {
+            if (await cache.exists(ckey) && await cache.hexists(ckey, field)) {
+                await cache.hdel(ckey, field);
+            }
+        } catch (e) {
+            throw e;
+        } finally {
+            cache.close();
         }
-        cache.close();
     }
 
     async updateEntrust(ckey, field, value) {
         let cache = await Cache.init(config.cacheDB.order);
         if (await cache.exists(ckey) && await cache.hexists(ckey, field)) {
-            await cache.hdel(ckey, field);
+            await cache.hset(ckey, field, value);
         }
-        await cache.hset(ckey, field, value);
         cache.close();
     }
 
