@@ -106,12 +106,12 @@ async function matchOrder(entrust) {
                 let sellItem = sellList[0];
                 //价格匹配
                 if (entrustItem.entrust_price >= sellItem.entrust_price) {
-                    let nextOrder = await EntrustModel.processOrder(entrustItem, sellItem);
-                    if (nextOrder) {
+                    let nextOrder = await EntrustModel.processOrder(entrustItem, sellItem, entrustItem.entrust_type_id);
+                    if (nextOrder.entrust_id == entrust.entrust_id) {
                         await matchOrder(nextOrder);
-                    } else {
-                        await matchOrder(entrust);
                     }
+                } else {
+                    console.log("cannot find suitable sellItem to process  entrust -" + entrustItem.entrust_id)
                 }
             }
         } else {
@@ -120,12 +120,12 @@ async function matchOrder(entrust) {
                 let buyItem = buyList[0];
                 //价格匹配
                 if (buyItem.entrust_price >= entrustItem.entrust_price) {
-                    let nextOrder = await EntrustModel.processOrder(buyItem, entrustItem);
-                    if (nextOrder) {
+                    let nextOrder = await EntrustModel.processOrder(buyItem, entrustItem, entrustItem.entrust_type_id);
+                    if (nextOrder.entrust_id == entrust.entrust_id) {
                         await matchOrder(nextOrder);
-                    } else {
-                        await matchOrder(entrust);
                     }
+                } else {
+                    console.log("cannot find suitable buyItem to process  entrust -" + entrustItem.entrust_id)
                 }
             }
         }

@@ -63,7 +63,6 @@ class EntrustModel {
             if (await cache.exists(ckey) && !refresh) {
                 let cRes = await cache.hgetall(ckey);
                 if (Object.keys(cRes) && await Object.keys(cRes).includes(entrustId.toString())) {
-                    cache.close();
                     return JSON.parse(cRes[entrustId])
                 } else {
                     let cnt = await DB.cluster('salve');
@@ -72,9 +71,7 @@ class EntrustModel {
                     cnt.close();
                     if (res.length > 0) {
                         await cache.hset(ckey, res.entrust_id, res);
-                        cache.close();
                     }
-                    cache.close();
                     return res;
                 }
 
@@ -87,7 +84,6 @@ class EntrustModel {
                 await cache.hset(ckey, res.entrust_id, res);
                 //let cRes = await cache.hgetall(ckey);
             }
-            cache.close();
             return res;
 
         } catch (error) {
@@ -111,8 +107,6 @@ class EntrustModel {
                         let item = buyRes[i];
                         data.push(JSON.parse(item));
                     }
-                    cache.close();
-                    console.log("from buy cache");
                     return data;
                 }
             }
@@ -128,9 +122,6 @@ class EntrustModel {
                     info
                 )
             }));
-
-            cache.close();
-            console.log("from buy db");
             return res;
 
         } catch (error) {
@@ -152,8 +143,6 @@ class EntrustModel {
                         let item = sellRes[i];
                         data.push(JSON.parse(item));
                     }
-                    cache.close();
-                    console.log("from sell cache");
                     return data;
                 }
             }
@@ -170,9 +159,6 @@ class EntrustModel {
                     info
                 )
             }));
-
-            cache.close();
-            console.log("from sell db");
             return res;
 
         } catch (error) {
@@ -289,7 +275,6 @@ class EntrustModel {
                     await cacheKline.hset(ckeyKline, timestamp, newObj);
                 }
             }));
-            cacheKline.close();
             socket.emit('kline', {coin_exchange_id: params.coin_exchange_id});
         } catch (e) {
             throw e;
@@ -327,7 +312,6 @@ class EntrustModel {
                     await cache.hset(uckey, entrust.entrust_id, params);
                     return {status: 2, data: params}
                 } else {
-                    console.log("entrust " + entrust.entrust_id + " already finished");
                     return {status: 1, data: {}}
                 }
             }
@@ -340,16 +324,14 @@ class EntrustModel {
         }
     }
 
-    async processOrder(reqItem, resItem) {
+    async processOrder(reqItem, resItem, trigger_type_id) {
         // asume reqItem -->BuyItem
         //  resItem -->SellItem
         if (reqItem.entrust_type_id == 0) {
-            let res = await this.processOrder(resItem, reqItem);
+            let res = await this.processOrder(resItem, reqItem, trigger_type_id);
             return res;
         }
         console.log("start process buyitem-->" + reqItem.entrust_id + "  sellitem-->" + resItem.entrust_id);
-        console.log(reqItem);
-        console.log(resItem);
         let reqEntrustStatus = 0;
         let reqEntrustStatusName = '待成交';
         let resEntrustStatus = 0;
@@ -467,7 +449,7 @@ class EntrustModel {
             let reqCoinAssetsList = await AssetsModel.getUserAssetsByUserId(reqItem.user_id, true);
             let resCoinAssetsList = await AssetsModel.getUserAssetsByUserId(resItem.user_id, true);
             if (reqCoinAssetsList && resCoinAssetsList) {
-                console.log("更新用户资产缓存成功 buy" + reqItem.entrust_id + " sell " + resItem.entrust_id);
+                console.log("更新用户资产缓存成功 buy " + reqItem.entrust_id + " sell " + resItem.entrust_id);
             }
             //买单用户资产变更日志
             let reqCoinAssets = reqCoinAssetsList.find(item => item.coin_id == coinEx.coin_id);
@@ -495,13 +477,13 @@ class EntrustModel {
                 trade_amount: tradeAmount,
                 buy_fees: reqTradeFees,
                 sell_fees: resTradeFees,
-                trigger_type_id: reqItem.entrust_type_id,
+                trigger_type_id: trigger_type_id,
                 proc_bonus_status: 1
             };
             let orderRes = await cnt.edit('m_order', orderParams);
             if (orderRes.affectedRows) {
                 await this.addOrder({...orderParams, order_id: orderRes.insertId, create_time: Date.now()});
-                console.log("增加新的order记录" + orderParams.order_id + "buy" + reqItem.entrust_id + " sell " + resItem.entrust_id);
+                console.log("增加新的order记录" + orderRes.insertId + " buy " + reqItem.entrust_id + " sell " + resItem.entrust_id);
             }
             if (reqEntrustRes.affectedRows && resEntrustRes.affectedRows &&
                 reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
