@@ -111,7 +111,7 @@ class EntrustModel {
                 }
             }
             let cnt = await DB.cluster('slave');
-            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 1 and entrust_status in (0,1) ORDER BY entrust_price DESC, entrust_id ASC LIMIT 5`;
+            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 1 and entrust_status in (0,1) ORDER BY entrust_price DESC, entrust_id ASC LIMIT 20`;
             let res = await cnt.execQuery(sql, coinExchangeId);
             cnt.close();
 
@@ -148,7 +148,7 @@ class EntrustModel {
             }
 
             let cnt = await DB.cluster('slave');
-            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 0 and entrust_status in (0,1) ORDER BY entrust_price ASC, entrust_id ASC LIMIT 5`;
+            let sql = `SELECT * FROM m_entrust WHERE coin_exchange_id = ? and entrust_type_id = 0 and entrust_status in (0,1) ORDER BY entrust_price ASC, entrust_id ASC LIMIT 20`;
             let res = await cnt.execQuery(sql, coinExchangeId);
             cnt.close();
 
@@ -156,7 +156,8 @@ class EntrustModel {
                 return cache.hset(
                     ckey,
                     info.entrust_id,
-                    info
+                    info,
+                    120
                 )
             }));
             return res;
@@ -312,8 +313,12 @@ class EntrustModel {
                     await cache.hdel(uckey, entrust.entrust_id);
                 }
                 if (params) {
-                    await cache.hset(ckey, entrust.entrust_id, params);
-                    await cache.hset(uckey, entrust.entrust_id, params);
+                    if (await cache.exists(uckey)) {
+                        await cache.hset(uckey, entrust.entrust_id, params);
+                    }
+                    if (await cache.exists(ckey)) {
+                        await cache.hset(ckey, entrust.entrust_id, params);
+                    }
                     return {status: 2, data: params}
                 } else {
                     return {status: 1, data: {}}

@@ -93,6 +93,7 @@ async function matchOrder(entrust) {
         }
         let result = await EntrustModel.updatEntrustCache(entrust);
         if (result.status == 0) {
+
             console.log("DB cannot find the entrust " + entrust.entrust_id);
             //数据库找不到这条entrust，先放回MQ
             return false
@@ -109,8 +110,12 @@ async function matchOrder(entrust) {
                 //价格匹配
                 if (entrustItem.entrust_price >= sellItem.entrust_price) {
                     let nextOrder = await EntrustModel.processOrder(entrustItem, sellItem, entrustItem.entrust_type_id);
-                    if (nextOrder.entrust_id == entrust.entrust_id) {
-                        await matchOrder(nextOrder);
+                    if (nextOrder) {
+                        if (nextOrder.entrust_id == entrust.entrust_id) {
+                            await matchOrder(nextOrder);
+                        }
+                    } else {
+                        await matchOrder(entrust);
                     }
                 } else {
                     console.log("cannot find suitable sellItem to process  entrust -" + entrustItem.entrust_id)
@@ -123,8 +128,12 @@ async function matchOrder(entrust) {
                 //价格匹配
                 if (buyItem.entrust_price >= entrustItem.entrust_price) {
                     let nextOrder = await EntrustModel.processOrder(buyItem, entrustItem, entrustItem.entrust_type_id);
-                    if (nextOrder.entrust_id == entrust.entrust_id) {
-                        await matchOrder(nextOrder);
+                    if (nextOrder) {
+                        if (nextOrder.entrust_id == entrust.entrust_id) {
+                            await matchOrder(nextOrder);
+                        }
+                    } else {
+                        await matchOrder(entrust);
                     }
                 } else {
                     console.log("cannot find suitable buyItem to process  entrust -" + entrustItem.entrust_id)
