@@ -29,9 +29,14 @@ let socket = io(config.socketDomain);
                     let result = await matchOrder(params);
                     if (!result) {
                         console.log("send back to mq " + params.entrust_id);
-                        ch.nack(msg);
-                        return
-                        // throw new Error("send back to mq "+params.entrust_id);
+                        if (!params.times) {
+                            params.times = 0;
+                        }
+                        if (params.times < 2) {
+                            params.times += 1;
+                            console.log("Send entrust " + params.entrust_id + " back to Queue times-" + params.times);
+                            await ch.sendToQueue(config.MQKey.Entrust_Queue + params.coin_exchange_id, new Buffer(JSON.stringify(params)), {persistent: true});
+                        }
                     }
                     ch.ack(msg);
                     console.log("-->" + params.entrust_id + ' ' + new Date());
@@ -59,21 +64,12 @@ function sortASC(item1, item2) {
     return parseFloat(item1.entrust_price) - parseFloat(item2.entrust_price);
 }
 
-async function getSellEntrustList(coinExchangeId, refresh = true) {
-    let sellList = [];
-    if (refresh) {
-        sellList = await EntrustModel.getSellEntrustListByCEId(coinExchangeId, refresh);
-        // console.log(arr.map(a=>a.entrust_price));
-        // sellList = arr.sort(sortASC);
-        // console.log(sellList.map(a=>a.entrust_price));
-    } else {
-        sellList = await EntrustModel.getSellEntrustListByCEId(coinExchangeId);
-        // sellList = arr.sort(sortASC);
-    }
+async function getSellEntrustList(coinExchangeId) {
+    let sellList = await EntrustModel.getSellEntrustListByCEId(coinExchangeId);
     return sellList;
 }
 
-async function getBuyEntrustList(coinExchangeId, refresh = true) {
+async function getBuyEntrustList(coinExchangeId, refresh = false) {
     let buyList = [];
     if (refresh) {
         buyList = await EntrustModel.getBuyEntrustListByCEId(coinExchangeId, refresh);
@@ -93,7 +89,6 @@ async function matchOrder(entrust) {
         }
         let result = await EntrustModel.updatEntrustCache(entrust);
         if (result.status == 0) {
-
             console.log("DB cannot find the entrust " + entrust.entrust_id);
             //数据库找不到这条entrust，先放回MQ
             return false
