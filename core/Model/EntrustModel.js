@@ -152,7 +152,7 @@ class EntrustModel {
             }
             await cache.hset(ckey, params.order_id, params);
             cache.close();
-            socket.emit('orderList', {coin_exchange_id: params.coin_exchange_id});
+            // socket.emit('orderList', {coin_exchange_id: params.coin_exchange_id});
 
             let timeObj = {
                 '1d': 86400000,
@@ -232,7 +232,7 @@ class EntrustModel {
                     await cacheKline.hset(ckeyKline, timestamp, newObj);
                 }
             }));
-            socket.emit('kline', {coin_exchange_id: params.coin_exchange_id});
+            // socket.emit('kline', {coin_exchange_id: params.coin_exchange_id});
         } catch (e) {
             throw e;
         } finally {
@@ -491,7 +491,7 @@ class EntrustModel {
                 if (reqEntrustStatus == 1) {
                     await this.updateEntrust(config.cacheKey.Buy_Entrust + reqItem.coin_exchange_id, req.entrust_id, req);
                     await this.updateEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id, req);
-                    socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
+                    // socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
                     socket.emit('userEntrustList', {
                         user_id: reqItem.user_id,
                         coin_exchange_id: reqItem.coin_exchange_id
@@ -500,7 +500,7 @@ class EntrustModel {
                 } else if (reqEntrustStatus == 2) {
                     await this.deleteEntrust(config.cacheKey.Buy_Entrust + reqItem.coin_exchange_id, req.entrust_id);
                     await this.deleteEntrust(config.cacheKey.Entrust_UserId + reqItem.user_id, req.entrust_id);
-                    socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
+                    // socket.emit('entrustList', {coin_exchange_id: reqItem.coin_exchange_id});
                     socket.emit('userEntrustList', {
                         user_id: reqItem.user_id,
                         coin_exchange_id: reqItem.coin_exchange_id
@@ -513,7 +513,7 @@ class EntrustModel {
                 if (resEntrustStatus == 1) {
                     await this.updateEntrust(config.cacheKey.Sell_Entrust + resItem.coin_exchange_id, res.entrust_id, res);
                     await this.updateEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id, res);
-                    socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
+                    // socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
                     socket.emit('userEntrustList', {
                         user_id: resItem.user_id,
                         coin_exchange_id: resItem.coin_exchange_id
@@ -521,7 +521,7 @@ class EntrustModel {
                 } else if (resEntrustStatus == 2) {
                     await this.deleteEntrust(config.cacheKey.Sell_Entrust + resItem.coin_exchange_id, res.entrust_id);
                     await this.deleteEntrust(config.cacheKey.Entrust_UserId + resItem.user_id, res.entrust_id);
-                    socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
+                    // socket.emit('entrustList', {coin_exchange_id: resItem.coin_exchange_id});
                     socket.emit('userEntrustList', {
                         user_id: resItem.user_id,
                         coin_exchange_id: resItem.coin_exchange_id

@@ -24,7 +24,7 @@ let socket = io(config.socketDomain);
                 try {
                     let params = JSON.parse(msg.content.toString());
                     console.log("<--" + params.entrust_id + ' ' + new Date());
-                    socket.emit('entrustList', {coin_exchange_id: item.coin_exchange_id});
+                    // socket.emit('entrustList', {coin_exchange_id: item.coin_exchange_id});
                     socket.emit('userEntrustList', {user_id: params.user_id, coin_exchange_id: item.coin_exchange_id});
                     let result = await matchOrder(params);
                     if (!result) {
