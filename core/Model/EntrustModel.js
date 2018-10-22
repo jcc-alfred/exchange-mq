@@ -75,7 +75,6 @@ class EntrustModel {
                 //     }
                 //     return res;
                 // }
-
             }
             let cnt = await DB.cluster('salve');
             let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)`;
