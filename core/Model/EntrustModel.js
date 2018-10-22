@@ -30,7 +30,6 @@ class EntrustModel {
                         let item = cRes[i];
                         data.push(JSON.parse(item));
                     }
-                    cache.close();
                     return data;
                 }
             }
@@ -43,7 +42,8 @@ class EntrustModel {
                 return cache.hset(
                     ckey,
                     info.entrust_id,
-                    info
+                    info,
+                    6000
                 )
             }));
 
