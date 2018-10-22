@@ -147,11 +147,10 @@ class EntrustModel {
         let cacheKline = await Cache.init(config.cacheDB.kline);
         try {
             let ckey = config.cacheKey.Order_Coin_Exchange_Id + params.coin_exchange_id;
-            if (await cache.exists(ckey) && await cache.hexists(ckey, params.order_id)) {
-                await cache.hdel(ckey, params.order_id);
+            if (await cache.exists(ckey)) {
+                // await cache.hdel(ckey, params.order_id);
+                await cache.hset(ckey, params.order_id, params);
             }
-            await cache.hset(ckey, params.order_id, params);
-            cache.close();
             // socket.emit('orderList', {coin_exchange_id: params.coin_exchange_id});
 
             let timeObj = {
