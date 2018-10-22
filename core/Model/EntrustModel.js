@@ -64,26 +64,27 @@ class EntrustModel {
                 let cRes = await cache.hgetall(ckey);
                 if (Object.keys(cRes) && await Object.keys(cRes).includes(entrustId.toString())) {
                     return JSON.parse(cRes[entrustId])
-                } else {
-                    let cnt = await DB.cluster('salve');
-                    let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
-                    let res = await cnt.execReader(sql, entrustId);
-                    cnt.close();
-                    if (res.length > 0) {
-                        await cache.hset(ckey, res.entrust_id, res);
-                    }
-                    return res;
                 }
+                // else {
+                //     let cnt = await DB.cluster('salve');
+                //     let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)  `;
+                //     let res = await cnt.execReader(sql, entrustId);
+                //     cnt.close();
+                //     if (res.length > 0) {
+                //         await cache.hset(ckey, res.entrust_id, res);
+                //     }
+                //     return res;
+                // }
 
             }
             let cnt = await DB.cluster('salve');
             let sql = `select * from m_entrust where entrust_id = ? and (entrust_status = 0 or entrust_status = 1)`;
             let res = await cnt.execReader(sql, [entrustId]);
             cnt.close();
-            if (res) {
-                await cache.hset(ckey, res.entrust_id, res);
-                //let cRes = await cache.hgetall(ckey);
-            }
+            // if (res) {
+            //     await cache.hset(ckey, res.entrust_id, res);
+            //     //let cRes = await cache.hgetall(ckey);
+            // }
             return res;
 
         } catch (error) {
