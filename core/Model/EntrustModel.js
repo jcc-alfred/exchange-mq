@@ -219,6 +219,7 @@ class EntrustModel {
                         newObj.volume = parseFloat(params.trade_volume);
                     }
                     await cacheKline.hset(ckeyKline, timestamp, newObj);
+                    await this.addKline(ckeyKline, newObj);
                 }
             }));
             // socket.emit('kline', {coin_exchange_id: params.coin_exchange_id});
@@ -229,6 +230,26 @@ class EntrustModel {
             cacheKline.close();
         }
 
+    }
+
+    async addKline(coin_exchange_id_range, {timestamp, datestamp, close_price, open_price, high_price, low_price, volume}) {
+        let cnt = await DB.cluster('master');
+        try {
+            await cnt.insertOnDuplicate('m_kline', {
+                coin_exchange_id_range,
+                timestamp,
+                datestamp,
+                close_price,
+                open_price,
+                high_price,
+                low_price,
+                volume
+            });
+        } catch (e) {
+            throw e;
+        } finally {
+            cnt.close();
+        }
     }
 
     async updatEntrustCache(entrust) {
@@ -341,7 +362,7 @@ class EntrustModel {
                         entrust_status_name = ?
                         where entrust_id =? and no_completed_volume >=? and entrust_status in (1,0)`;
             let reqEntrustRes = await cnt.execQuery(sql,
-                [tradeVolume, tradeVolume, tradeAmount, reqAvgPrice, reqTradeFees, reqEntrustStatus, reqEntrustStatusName, reqItem.entrust_id, tradeVolume])
+                [tradeVolume, tradeVolume, tradeAmount, reqAvgPrice, reqTradeFees, reqEntrustStatus, reqEntrustStatusName, reqItem.entrust_id, tradeVolume]);
             if (reqEntrustRes.affectedRows) {
                 console.log("修改买单成功" + reqItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + reqEntrustStatus);
             } else {
@@ -350,7 +371,7 @@ class EntrustModel {
             //sell entrust
             let resTradeFees = Utils.checkDecimal(Utils.mul(tradeAmount, resItem.trade_fees_rate), coinEx.exchange_decimal_digits);
             let resEntrustRes = await cnt.execQuery(sql,
-                [tradeVolume, tradeVolume, tradeAmount, resAvgPrice, resTradeFees, resEntrustStatus, resEntrustStatusName, resItem.entrust_id, tradeVolume])
+                [tradeVolume, tradeVolume, tradeAmount, resAvgPrice, resTradeFees, resEntrustStatus, resEntrustStatusName, resItem.entrust_id, tradeVolume]);
 
             if (resEntrustRes.affectedRows) {
                 console.log("修改卖单成功" + resItem.entrust_id + "， 完成单加 " + tradeVolume + " 状态为 " + resEntrustStatusName);
