@@ -158,12 +158,11 @@ class DBHepler {
 
     }
 
-    async insertOnDuplicate(tname, data, where = false) {
+    async insertOnDuplicate(tname, data) {
         try {
             let dataStr = this._buildSQL(data, ',');
             var sql = `insert into  \`${tname}\` set ${dataStr} on duplicate key update ${dataStr}`;
-            console.log(sql);
-            // let res = await this.execQuery(sql);
+            let res = await this.execQuery(sql);
             return res;
         } catch (error) {
             throw error;
