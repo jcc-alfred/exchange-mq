@@ -159,7 +159,7 @@ class EntrustModel {
             let hourArr = [14400000, 21600000, 43200000];//4 6 12
             await Promise.all(Object.values(timeObj).map(async (range) => {
                 let ckeyKline = config.cacheKey.KlineData_CEID_Range + params.coin_exchange_id + '_' + range;
-                if (await cacheKline.exists(ckeyKline)) {
+                // if (await cacheKline.exists(ckeyKline)) {
                     let createTime = new Date(params.create_time);
                     let newTime = createTime;
                     let timestamp = 0;
@@ -206,7 +206,7 @@ class EntrustModel {
                     newObj.timestamp = timestamp;
                     newObj.datestamp = datestamp;
                     newObj.close_price = parseFloat(params.trade_price);
-                    if (await cacheKline.hexists(ckeyKline, timestamp)) {
+                    if (await cacheKline.exists(ckeyKline) && await cacheKline.hexists(ckeyKline, timestamp)) {
                         let obj = await cacheKline.hget(ckeyKline, timestamp);
                         newObj.open_price = parseFloat(obj.open_price);
                         newObj.high_price = parseFloat(params.trade_price) > parseFloat(obj.high_price) ? parseFloat(params.trade_price) : parseFloat(obj.high_price);
@@ -218,9 +218,8 @@ class EntrustModel {
                         newObj.low_price = parseFloat(params.trade_price);
                         newObj.volume = parseFloat(params.trade_volume);
                     }
-                    await cacheKline.hset(ckeyKline, timestamp, newObj);
                     await this.addKline(ckeyKline, newObj);
-                }
+                // }
             }));
             // socket.emit('kline', {coin_exchange_id: params.coin_exchange_id});
         } catch (e) {
