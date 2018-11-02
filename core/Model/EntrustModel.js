@@ -218,7 +218,8 @@ class EntrustModel {
                         newObj.low_price = parseFloat(params.trade_price);
                         newObj.volume = parseFloat(params.trade_volume);
                     }
-                    await this.addKline(ckeyKline, newObj);
+                await cacheKline.hset(ckeyKline, timestamp, newObj);
+                await this.addKline(ckeyKline, newObj);
                 // }
             }));
             // socket.emit('kline', {coin_exchange_id: params.coin_exchange_id});
