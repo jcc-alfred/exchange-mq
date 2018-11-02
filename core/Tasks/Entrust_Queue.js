@@ -32,11 +32,11 @@ let socket = io(config.socketDomain);
                         if (!params.times) {
                             params.times = 0;
                         }
-                        if (params.times < 2) {
+                        // if (params.times < 2) {
                             params.times += 1;
                             console.log("Send entrust " + params.entrust_id + " back to Queue times-" + params.times);
                             await ch.sendToQueue(config.MQKey.Entrust_Queue + params.coin_exchange_id, new Buffer(JSON.stringify(params)), {persistent: true});
-                        }
+                        // }
                     }
                     ch.ack(msg);
                     console.log("-->" + params.entrust_id + ' ' + new Date());
@@ -46,7 +46,7 @@ let socket = io(config.socketDomain);
             }, {noAck: false})
         });
     } catch (error) {
-        throw error;
+        console.error(error);
     }
 })();
 

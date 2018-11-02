@@ -287,7 +287,7 @@ class EntrustModel {
                 }
             }
         } catch (e) {
-            console.log(e);
+            console.error(e);
             throw e;
         } finally {
             cache.close();
