@@ -218,6 +218,9 @@ class EntrustModel {
                         newObj.low_price = parseFloat(params.trade_price);
                         newObj.volume = parseFloat(params.trade_volume);
                     }
+                    if (!await  cacheKline.exists(ckeyKline)){
+                        await this.getKlineData(params.coin_exchange_id,range);
+                    }
                 await cacheKline.hset(ckeyKline, timestamp, newObj);
                 await this.addKline(ckeyKline, newObj);
                 // }
@@ -230,6 +233,48 @@ class EntrustModel {
             cacheKline.close();
         }
 
+    }
+
+    async getKlineData(coinExchangeId, range, refresh = false) {
+        let cache = await Cache.init(config.cacheDB.kline);
+        try {
+            let ckey = config.cacheKey.KlineData_CEID_Range + coinExchangeId + '_' + range;
+            if (await cache.exists(ckey) && !refresh) {
+                let cRes = await cache.hgetall(ckey);
+                if (cRes) {
+                    let data = [];
+                    for (let i in cRes) {
+                        let item = cRes[i];
+                        data.push(JSON.parse(item));
+                    }
+                    return data;
+                }
+            }
+            let cnt = await DB.cluster('slave');
+            let sql = `SELECT datestamp, timestamp, open_price, close_price, high_price, low_price, volume
+                       FROM m_kline
+                       WHERE coin_exchange_id_range = ?
+                       ORDER BY timestamp DESC
+                       LIMIT 500`;
+
+            let res = await cnt.execQuery(sql, ckey);
+            cnt.close();
+
+            let chRes = await Promise.all(res.map((info) => {
+                return cache.hset(
+                    ckey,
+                    info.timestamp,
+                    info,
+                    3600
+                )
+            }));
+            return res;
+
+        } catch (error) {
+            throw error;
+        } finally {
+            cache.close();
+        }
     }
 
     async addKline(coin_exchange_id_range, {timestamp, datestamp, close_price, open_price, high_price, low_price, volume}) {
