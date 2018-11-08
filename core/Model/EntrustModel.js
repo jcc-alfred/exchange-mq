@@ -18,9 +18,8 @@ class EntrustModel {
     }
 
     async getEntrustListByUserId(userId, refresh = false) {
+        let cache = await Cache.init(config.cacheDB.order);
         try {
-
-            let cache = await Cache.init(config.cacheDB.order);
             let ckey = config.cacheKey.Entrust_UserId + userId;
             if (await cache.exists(ckey) && !refresh) {
                 let cRes = await cache.hgetall(ckey);
@@ -42,17 +41,17 @@ class EntrustModel {
                 return cache.hset(
                     ckey,
                     info.entrust_id,
-                    info,
-                    6000
+                    info
                 )
             }));
-
-            cache.close();
+            await cache.expire(ckey,6000);
 
             return res;
 
         } catch (error) {
             throw error;
+        } finally {
+            cache.close();
         }
     }
 
