@@ -66,7 +66,7 @@ let SMSUtils = require('../Base/Utils/SMSUtils');
                         console.log("send email to " + params.email + " successfully");
                     }
                     catch (error) {
-                        console.error(error)
+                        console.error(error);
                         sendResult = false;
                     }
                 }
