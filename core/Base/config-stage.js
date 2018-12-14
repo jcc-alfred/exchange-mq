@@ -1,7 +1,10 @@
 const config = {
 
     socketDomain: 'http://54.169.107.53:5000/',
-
+    aws:{
+        accessKeyId:"AKIAJAXRUBCTM4SZTKFA",
+        secretAccessKey:"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"
+    },
     sys:{
         domain:'getdax.com',        //域名
         ipRegisterMaxNum:100,       //IP注册最大次数
