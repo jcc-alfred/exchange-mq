@@ -20,6 +20,7 @@
     "redis": "^2.8.0",
     "socket.io-client": "^2.1.1",
     "speakeasy": "^2.0.0",
-    "@alicloud/international-sms-sdk": "^1.0.3"
+    "@alicloud/international-sms-sdk": "^1.0.3",
+    "aws-sdk": "^2.370.0"
   }
 }
