@@ -93,7 +93,7 @@ class SystemModel{
     async getMsgTpl(langCode,tplType){
         try{
             let lang = await this.getLangByCode(langCode||"en");
-            let tpl = await this.getSysMsgTplByLangAndType(lang.sys_lang_id,tplType);
+            let tpl = await this.getSysMsgTplByLangAndType(lang.sys_lang_id||3,tplType);
             return tpl;
         } catch(error){
             throw error

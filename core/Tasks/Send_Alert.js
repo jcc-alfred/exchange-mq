@@ -57,21 +57,21 @@ let SMS_AWS = require('../Base/Utils/SMS_AWS');
                     subject = tpl.msg_subject;
                     let text = '';
                     if (params.msg_type_id == 5 || params.msg_type_id == 6) {
-                        msg = Utils.formatString(tpl.msg_tmpl, [moment().format('YYYY-MM-DD HH:mm:ss'), params.amount, params.unit]);
+                        message = Utils.formatString(tpl.msg_tmpl, [moment().format('YYYY-MM-DD HH:mm:ss'), params.amount, params.unit]);
                     } else if (params.msg_type_id == 1 || params.msg_type_id == 2) {
-                        msg = Utils.formatString(tpl.msg_tmpl, [moment().format('YYYY-MM-DD HH:mm:ss'), params.ip]);
+                        message = Utils.formatString(tpl.msg_tmpl, [moment().format('YYYY-MM-DD HH:mm:ss'), params.ip]);
                     }
                     else if (params.msg_type_id == 7) {
-                        msg = Utils.formatString(tpl.msg_tmpl, [params.serial_num, params.total_amount]);
+                        message = Utils.formatString(tpl.msg_tmpl, [params.serial_num, params.total_amount]);
                     }
                     else if (params.msg_type_id == 8) {
-                        msg = Utils.formatString(tpl.msg_tmpl, [params.serial_num, params.total_amount]);
+                        message = Utils.formatString(tpl.msg_tmpl, [params.serial_num, params.total_amount]);
                     }
                     else if (params.msg_type_id == 9) {
-                        msg = Utils.formatString(tpl.msg_tmpl, [params.serial_num, params.total_amount]);
+                        message = Utils.formatString(tpl.msg_tmpl, [params.serial_num, params.total_amount]);
                     }
                     else {
-                        msg = Utils.formatString(tpl.msg_tmpl, [moment().format('YYYY-MM-DD HH:mm:ss')]);
+                        message = Utils.formatString(tpl.msg_tmpl, [moment().format('YYYY-MM-DD HH:mm:ss')]);
                     }
                 }
                 let sendResult = null;
@@ -109,6 +109,7 @@ let SMS_AWS = require('../Base/Utils/SMS_AWS');
             } catch (error) {
 
                 throw error;
+                ch.nack();
             }
 
         }, {noAck: false})
