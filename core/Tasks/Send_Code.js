@@ -53,7 +53,15 @@ let SMSUtils = require('../Base/Utils/SMSUtils');
                 let tpl = await SystemModel.getMsgTpl(params.lang, params.msg_type_id);
                 let code = CodeUtils.makeCode(6);
                 let text = Utils.formatString(tpl.msg_tmpl, [code]);
+                let ckey = config.cacheKey.User_Code + (params.type == 'phone' ? params.area_code.toString() + params.phone_number.toString() : params.email.toLocaleLowerCase());
+                console.log(code+ "--- " +ckey )
 
+                let cache = await Cache.init(config.cacheDB.users);
+                await cache.set(ckey, {
+                    sendTime: Date.now() / 1000,
+                    code: code
+                }, 60 * config.sys.codeExpired);
+                cache.close();
                 //发送验证码
                 let sendResult = null;
                 if (params.type == "email") {
@@ -75,16 +83,16 @@ let SMSUtils = require('../Base/Utils/SMSUtils');
                         let {ResultCode} = await SMSUtils.sendSMS(params.area_code, params.phone_number, code);
                         if (ResultCode === 'OK') {
                             sendResult = true;
-                            console.log("send sms to " + params.area_code +"-"+ params.phone_number + " successfully")
+                            console.log("send sms to " + params.area_code + "-" + params.phone_number + " successfully")
                         } else if (ResultCode === "isv.DAY_LIMIT_CONTROL") {
                             sendResult = true;
-                            console.log("Limit reached for phone number " + params.area_code +"-"+ params.phone_number);
+                            console.log("Limit reached for phone number " + params.area_code + "-" + params.phone_number);
                         } else {
                             sendResult = true;
-                            console.error("failed to send sms to " + params.area_code +"-"+ params.phone_number + " errorcode:" + ResultCode);
+                            console.error("failed to send sms to " + params.area_code + "-" + params.phone_number + " errorcode:" + ResultCode);
                         }
                     } catch (e) {
-                        console.error("failed to send sms to " + params.area_code +"-"+ params.phone_number + " err:" + e);
+                        console.error("failed to send sms to " + params.area_code + "-" + params.phone_number + " err:" + e);
                         sendResult = false;
                     }
                 }
@@ -94,14 +102,6 @@ let SMSUtils = require('../Base/Utils/SMSUtils');
                     return;
                 }
 
-                let ckey = config.cacheKey.User_Code + (params.type == 'phone' ? params.area_code.toString() + params.phone_number.toString() : params.email.toLocaleLowerCase());
-
-                let cache = await Cache.init(config.cacheDB.users);
-                await cache.set(ckey, {
-                    sendTime: Date.now() / 1000,
-                    code: code
-                }, 60 * config.sys.codeExpired);
-                cache.close();
 
                 ch.ack(msg);
             } catch (error) {
