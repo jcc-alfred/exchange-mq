@@ -101,13 +101,12 @@ let SMS_AWS = require('../Base/Utils/SMS_AWS');
                         sendResult = false;
                     }
                 }
-                if (!sendResult) {
-                    ch.nack(msg);
-                    return;
-                }
+                // if (!sendResult) {
+                //     ch.nack(msg);
+                //     return;
+                // }
                 ch.ack(msg);
             } catch (error) {
-
                 throw error;
                 ch.nack();
             }

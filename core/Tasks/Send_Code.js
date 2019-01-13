@@ -97,10 +97,10 @@ let SMSUtils = require('../Base/Utils/SMSUtils');
                     }
                 }
 
-                if (!sendResult) {
-                    ch.nack(msg);
-                    return;
-                }
+                // if (!sendResult) {
+                //     ch.nack(msg);
+                //     return;
+                // }
 
 
                 ch.ack(msg);
