@@ -7,7 +7,7 @@ let moment = require('moment');
 let AssetsModel = require('../Model/AssetsModel');
 let AssetsLogModel = require('../Model/AssetsLogModel');
 let CoinModel = require('../Model/CoinModel');
-
+let tradeReportModel =require('../Model/tradeReportModel');
 let io = require('socket.io-client');
 let socket = io(config.socketDomain);
 
@@ -504,7 +504,13 @@ class EntrustModel {
                 reqUpdCoinAssets.affectedRows && reqUpdExchangeCoinAssets.affectedRows &&
                 resUpdCoinAssets.affectedRows && resUpdExchangeCoinAssets.affectedRows) {
                 cnt.commit();
-
+                if (orderParams.sell_user_id !== 2 && orderParams.buy_user_id !== 2) {
+                    await tradeReportModel.addTradeRecord(orderParams.coin_exchange_id, coinEx.coin_name, coinEx.exchange_coin_name, orderParams.buy_fees, orderParams.sell_fees, orderParams.trade_amount, orderParams.trade_volume);
+                } else if (orderParams.sell_user_id === 2 && orderParams.buy_user_id !== 2) {
+                    await tradeReportModel.addTradeRecord(orderParams.coin_exchange_id, coinEx.coin_name, coinEx.exchange_coin_name, orderParams.buy_fees, 0, orderParams.trade_amount, orderParams.trade_volume);
+                } else if (orderParams.sell_user_id !== 2 && orderParams.buy_user_id === 2) {
+                    await tradeReportModel.addTradeRecord(orderParams.coin_exchange_id, coinEx.coin_name, coinEx.exchange_coin_name, 0, orderParams.sell_fees, orderParams.trade_amount, orderParams.trade_volume);
+                }
                 let req = {
                     entrust_id: reqItem.entrust_id,
                     coin_exchange_id: reqItem.coin_exchange_id,
